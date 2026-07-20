@@ -19,6 +19,10 @@ treatment** (like the ChatGPT/Claude thumbs) — no coloured block or icon conta
 - **Expanded — end (in content)** — at the end of the content, above the Sources divider.
 - **Expanded — end (footer)** — repositioned to sit *right under the divider, above the
   “Sources” title* (order: divider → feedback → Sources), not floating by the source chips.
+- **Expanded — beside Sources** — thumbs **icons only** (no label, borderless), right-
+  aligned in line with the “Sources” title. The most minimal treatment; here the down-vote
+  registers directly rather than opening reason chips (kept lightweight for a corner), so
+  it trades reason capture for the smallest footprint.
 
 **Feedback style (exploring):**
 - **Thumbs up/down** — plain, down-vote opens optional reason chips (the richer signal).

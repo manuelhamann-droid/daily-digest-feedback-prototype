@@ -271,6 +271,12 @@
 
   /* grouped thumbs + report */
   .fb-sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
+
+  /* feedback inline beside the Sources title */
+  .dd-src-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .fb-inline-ctrl { flex: none; }
+  .icon-btn.ghost { border-color: transparent; background: transparent; }
+  .icon-btn.ghost:hover { background: var(--neutral-base); border-color: transparent; }
 </style>
 </head>
 <body>
@@ -321,6 +327,7 @@
 const PLACEMENTS = [
   { id: 'expanded-end-content', bucket: 'active', label: 'Expanded — end (in content)', hint: 'At the end of the content, above the Sources divider — reads as part of the digest.' },
   { id: 'expanded-end', bucket: 'active', label: 'Expanded — end (footer)',  hint: 'Right under the divider, above the “Sources” title (divider → feedback → Sources).' },
+  { id: 'expanded-end-inline', bucket: 'active', label: 'Expanded — beside Sources', hint: 'Icons only, right-aligned in line with the “Sources” title — minimal, no label.' },
   { id: 'collapsed',    bucket: 'trash', label: 'Collapsed digest (whole)', hint: 'Parked: reflects the teaser, not the curation; team is focusing on the expanded view.' },
   { id: 'expanded-top', bucket: 'trash', label: 'Expanded digest — top',    hint: 'Parked: asks before the person has read anything.' },
   { id: 'per-item',     bucket: 'trash', label: 'Per content item',         hint: 'Parked: high friction and visual noise; too much going on already.' },
@@ -469,6 +476,36 @@ function buildThumbsReport(ctx) {
   up.addEventListener('click', () => openThumb('up'));
   down.addEventListener('click', () => openThumb('down'));
   rep.addEventListener('click', openReport);
+  return wrap;
+}
+
+// Compact icons-only controls for the "beside Sources" placement (no label).
+// Thumbs register directly (minimal corner treatment); Report opens a form in `followEl` below the sources.
+function buildInlineControls(mech, followEl) {
+  const wrap = el(`<div class="fb item-fb-compact"></div>`);
+  const hasThumbs = mech === 'thumbs' || mech === 'thumbs-report';
+  const hasReport = mech === 'report' || mech === 'thumbs-report';
+  let html = '';
+  if (hasThumbs) html += `<button class="icon-btn ghost up round" title="Helpful">${I.up}</button><button class="icon-btn ghost down round" title="Not helpful">${I.down}</button>`;
+  if (hasThumbs && hasReport) html += `<span class="fb-sep"></span>`;
+  if (hasReport) html += `<button class="report-link" title="Report an issue">${I.flag}</button>`;
+  wrap.innerHTML = html;
+  const up = wrap.querySelector('.up'), down = wrap.querySelector('.down'), rep = wrap.querySelector('.report-link');
+  const shortThanks = () => { wrap.innerHTML = `<span class="fb-thanks">${I.check} Thanks</span>`; if (followEl) { followEl.style.display = 'none'; followEl.innerHTML = ''; } };
+  up && up.addEventListener('click', () => { up.classList.add('sel'); down && down.classList.remove('sel'); shortThanks(); });
+  down && down.addEventListener('click', () => { down.classList.add('sel'); up && up.classList.remove('sel'); shortThanks(); });
+  rep && rep.addEventListener('click', () => {
+    if (!followEl) return;
+    followEl.style.display = 'block';
+    followEl.innerHTML = `
+      <div class="cap" style="margin-bottom:7px;">What’s wrong?</div>
+      <div class="chips">${['Inaccurate','Inappropriate','Broken link','Wrong audience','Outdated'].map(c => `<button class="chip">${c}</button>`).join('')}</div>
+      <textarea placeholder="Describe the issue (optional)"></textarea>
+      <div class="fb-submit-row"><button class="btn-primary">Submit report</button><button class="btn-text">Cancel</button></div>`;
+    followEl.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
+    followEl.querySelector('.btn-primary').addEventListener('click', () => { wrap.innerHTML = `<span class="fb-thanks">${I.check} Reported</span>`; followEl.style.display = 'none'; followEl.innerHTML = ''; });
+    followEl.querySelector('.btn-text').addEventListener('click', () => { followEl.style.display = 'none'; followEl.innerHTML = ''; });
+  });
   return wrap;
 }
 
@@ -676,10 +713,14 @@ function renderExpanded() {
       <hr class="dd-hr" />
       <div class="dd-sources">
         ${state.placement === 'expanded-end' ? `<div id="slot-exp-end" style="margin-bottom:16px;"></div>` : ''}
-        <p class="lbl">Sources</p>
+        <div class="dd-src-head">
+          <p class="lbl">Sources</p>
+          ${state.placement === 'expanded-end-inline' ? `<div id="slot-inline-ctrl" class="fb-inline-ctrl"></div>` : ''}
+        </div>
         <div class="dd-source-tags">
           ${SOURCES.map((s,i) => `<span class="dd-src"><span class="n">${i+1}</span><span class="dot">•</span><span class="t">${s}</span></span>`).join('')}
         </div>
+        ${state.placement === 'expanded-end-inline' ? `<div id="slot-inline-follow" style="margin-top:12px; display:none;"></div>` : ''}
       </div>
     </div>`;
 
@@ -697,6 +738,11 @@ function renderExpanded() {
   if (state.placement === 'expanded-end-content') {
     const slot = digestEl.querySelector('#slot-exp-end-content');
     slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest' }));
+  }
+  if (state.placement === 'expanded-end-inline') {
+    const ctrl = digestEl.querySelector('#slot-inline-ctrl');
+    const follow = digestEl.querySelector('#slot-inline-follow');
+    ctrl.appendChild(buildInlineControls(state.mechanism, follow));
   }
   if (state.placement === 'per-item') {
     digestEl.querySelectorAll('.fb-inline-slot').forEach(slot => slot.appendChild(buildMechanism(state.mechanism, { scope: 'item' })));
