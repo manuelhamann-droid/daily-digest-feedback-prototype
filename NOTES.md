@@ -4,9 +4,34 @@ A design exploration of where and how to capture end-user feedback on the AI-cur
 Daily Digest. This is deliberately **open** — no recommended answer. Each option below
 carries a neutral pro/con read so a design review can weigh the tensions directly.
 
-Open `index.html` and use the **variant switcher** (top bar) to compare
-`placement × mechanism` combinations live. Not every combination is equally sensible;
-the switcher lets you feel *why*.
+Open `index.html` and use the **variant switcher**. The panel has two tabs:
+- **Exploring** — the direction we're pursuing after review.
+- **Trash** — options we've parked (kept for reference, still previewable).
+
+---
+
+## Current direction (after review — Giovanna G. + Manuel)
+
+Narrowed to the **expanded digest, feedback at the bottom**, in a **plain, search-style
+treatment** (like the ChatGPT/Claude thumbs) — no coloured block or icon container.
+
+**Placement (both kept):**
+- **Expanded — end (in content)** — at the end of the content, above the Sources divider.
+- **Expanded — end (footer)** — repositioned to sit *right under the divider, above the
+  “Sources” title* (order: divider → feedback → Sources), not floating by the source chips.
+
+**Feedback style (exploring):**
+- **Thumbs up/down** — plain, down-vote opens optional reason chips (the richer signal).
+- **Thumbs + Report (grouped)** — thumbs and “Report issue” in one row, so all three read
+  as feedback on the *digest* (fixes the earlier confusion where Report looked like it was
+  about the sources).
+- **Report issue only.**
+- Open question Manuel raised: **thumbs *or* report, not both** vs. Giovanna's grouped-all-
+  three — the grouped option and the two single options let us compare that directly.
+
+**Parked (Trash tab):** collapsed-whole, expanded-top, per-item; rating scale, “was this
+relevant?”, dismiss-as-signal, reason-chips-no-valence. The fuller neutral pro/con write-up
+for every option is retained below for reference.
 
 ---
 

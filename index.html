@@ -261,6 +261,16 @@
 
   /* whole-digest feedback bars */
   .fb-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+  /* panel tabs */
+  .tabs { display: inline-flex; gap: 4px; background: var(--neutral-base); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 3px; margin-bottom: 18px; }
+  .tab { border: none; background: none; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink-3); padding: 5px 14px; border-radius: 6px; }
+  .tab:hover { color: var(--ink-2); }
+  .tab.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(20,20,40,.08); }
+  .trash-note { font-size: 12px; color: var(--ink-2); background: #fbf3e6; border: 1px solid #f0dcc0; border-radius: var(--radius-sm); padding: 9px 11px; margin-bottom: 16px; line-height: 1.45; }
+
+  /* grouped thumbs + report */
+  .fb-sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
 </style>
 </head>
 <body>
@@ -268,7 +278,16 @@
   <!-- ============ CONTROL PANEL ============ -->
   <aside class="panel">
     <h1>Daily Digest · Feedback Lab</h1>
-    <p class="sub">Compare where and how end users give feedback on the AI-curated digest. Nothing here is a recommendation.</p>
+    <p class="sub">Focused on the direction from review: feedback at the bottom of the expanded digest, plain search-style treatment.</p>
+
+    <div class="tabs">
+      <button class="tab active" id="tab-exploring">Exploring</button>
+      <button class="tab" id="tab-trash">Trash</button>
+    </div>
+
+    <div id="trash-note" class="trash-note" style="display:none;">
+      Parked based on review feedback (Giovanna, focus on the expanded view + a plainer, search-style treatment). Still selectable here to revisit.
+    </div>
 
     <div class="ctl">
       <div class="label"><span>Placement</span></div>
@@ -277,22 +296,9 @@
     </div>
 
     <div class="ctl">
-      <div class="label"><span>Mechanism</span></div>
+      <div class="label"><span id="mech-label">Feedback style</span></div>
       <div class="seg" id="seg-mechanism"></div>
       <div class="hint" id="mechanism-hint"></div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="ctl">
-      <div class="switch-row">
-        <span class="txt">Reveal on hover / tap<br><span class="cap">vs. always inline</span></span>
-        <div class="toggle" id="tg-reveal"></div>
-      </div>
-      <div class="switch-row">
-        <span class="txt">Always-available “Report issue”<br><span class="cap">secondary affordance</span></span>
-        <div class="toggle on" id="tg-report"></div>
-      </div>
     </div>
 
     <div class="divider"></div>
@@ -311,23 +317,27 @@
 
 <script>
 /* ============================================================ State ============================================================ */
+// bucket: 'active' = being pursued after review; 'trash' = parked
 const PLACEMENTS = [
-  { id: 'collapsed',    label: 'Collapsed digest (whole)', hint: 'Reaction before opening — captures non-openers, but reflects the teaser, not the curation.' },
-  { id: 'expanded-top', label: 'Expanded digest — top',    hint: 'One control below the headline. High visibility, but asked before the person has read anything.' },
-  { id: 'expanded-end-content', label: 'Expanded — end (in content)', hint: 'At the end of the content, above the Sources divider — feels part of the digest itself.' },
-  { id: 'expanded-end', label: 'Expanded — end (footer)',  hint: 'Below the Sources divider, in the footer area. Reflects the whole read, but only reaches people who scroll down.' },
-  { id: 'per-item',     label: 'Per content item',         hint: 'Richest attribution for curation tuning — and the highest friction and visual noise.' },
+  { id: 'expanded-end-content', bucket: 'active', label: 'Expanded — end (in content)', hint: 'At the end of the content, above the Sources divider — reads as part of the digest.' },
+  { id: 'expanded-end', bucket: 'active', label: 'Expanded — end (footer)',  hint: 'Right under the divider, above the “Sources” title (divider → feedback → Sources).' },
+  { id: 'collapsed',    bucket: 'trash', label: 'Collapsed digest (whole)', hint: 'Parked: reflects the teaser, not the curation; team is focusing on the expanded view.' },
+  { id: 'expanded-top', bucket: 'trash', label: 'Expanded digest — top',    hint: 'Parked: asks before the person has read anything.' },
+  { id: 'per-item',     bucket: 'trash', label: 'Per content item',         hint: 'Parked: high friction and visual noise; too much going on already.' },
 ];
 const MECHANISMS = [
-  { id: 'thumbs',   label: 'Thumbs + follow-up', tag: 'Hero', hint: 'Familiar one-tap valence; the follow-up (reason chips / free text) is the signal we actually want.' },
-  { id: 'rating',   label: 'Rating scale (1–5)', hint: 'More granular than binary, but higher load and no reason unless paired with a follow-up.' },
-  { id: 'relevant', label: '“Was this relevant?”', hint: 'Frames feedback as personal fit, not judging a colleague — lower social cost, still valence-only.' },
-  { id: 'dismiss',  label: 'Dismiss as signal', hint: 'Near-zero friction, rides an action people already take — but ambiguous and implicit.' },
-  { id: 'chips',    label: 'Reason chips (no valence)', hint: 'Jumps straight to the reason; no clean sentiment axis and chip wording biases answers.' },
-  { id: 'report',   label: 'Report issue only', tag: 'Escape', hint: 'For things that are wrong, not just unhelpful. Rare but high-value; different question than relevance.' },
+  { id: 'thumbs',        bucket: 'active', label: 'Thumbs up/down', tag: 'Lead', hint: 'Plain, search-style thumbs (no box). Down-vote opens optional reason chips — the richer signal.' },
+  { id: 'thumbs-report', bucket: 'active', label: 'Thumbs + Report (grouped)', hint: 'Thumbs and Report issue grouped in one row, so all three clearly read as feedback on the digest.' },
+  { id: 'report',        bucket: 'active', label: 'Report issue only', hint: 'Just the report affordance — the “something is wrong” escape hatch, no valence.' },
+  { id: 'rating',   bucket: 'trash', label: 'Rating scale (1–5)', hint: 'Parked: higher load; feels evaluative.' },
+  { id: 'relevant', bucket: 'trash', label: '“Was this relevant?”', hint: 'Parked in favour of the plain thumbs treatment.' },
+  { id: 'dismiss',  bucket: 'trash', label: 'Dismiss as signal', hint: 'Parked: ambiguous and implicit.' },
+  { id: 'chips',    bucket: 'trash', label: 'Reason chips (no valence)', hint: 'Parked: no clean sentiment axis; adds another block.' },
 ];
+const FIRST = { active: { placement: 'expanded-end-content', mechanism: 'thumbs' }, trash: { placement: 'collapsed', mechanism: 'rating' } };
+const bucketForTab = (tab) => (tab === 'trash' ? 'trash' : 'active');
 
-const state = { placement: 'expanded-end', mechanism: 'thumbs', reveal: false, report: true };
+const state = { tab: 'exploring', placement: 'expanded-end-content', mechanism: 'thumbs', reveal: false, report: false };
 const isOpen = () => state.placement !== 'collapsed';
 
 /* ============================================================ Icons ============================================================ */
@@ -414,6 +424,51 @@ function buildThumbs(ctx) {
   function done() { wrap.innerHTML = `<div class="${ctx.scope === 'item' ? 'item-fb-compact' : ''}">${thanks()}</div>`; }
   up.addEventListener('click', () => openFollow('up'));
   down.addEventListener('click', () => openFollow('down'));
+  return wrap;
+}
+
+// Thumbs up/down AND Report issue grouped in one row — all read as feedback on the digest.
+function buildThumbsReport(ctx) {
+  const wrap = el(`<div class="fb"></div>`);
+  wrap.innerHTML = `
+    <div class="fb-actions">
+      <span class="cap" style="margin-right:2px;">${ctx.label || 'Was this digest useful?'}</span>
+      <button class="icon-btn up round" title="Helpful">${I.up}</button>
+      <button class="icon-btn down round" title="Not helpful">${I.down}</button>
+      <span class="fb-sep"></span>
+      <button class="report-link" title="Report an issue">${I.flag} Report issue</button>
+    </div>
+    <div class="fb-followup" style="display:none;"></div>`;
+  const up = wrap.querySelector('.up'), down = wrap.querySelector('.down'), rep = wrap.querySelector('.report-link'), follow = wrap.querySelector('.fb-followup');
+  const done = msg => { wrap.innerHTML = `<span class="fb-thanks">${I.check} ${msg}</span>`; };
+  function openThumb(v) {
+    up.classList.toggle('sel', v === 'up'); down.classList.toggle('sel', v === 'down');
+    const chips = v === 'up' ? POS_REASONS : NEG_REASONS;
+    follow.style.display = 'block';
+    follow.innerHTML = `
+      <div class="cap" style="margin-bottom:7px;">${v === 'up' ? 'Nice — what worked? (optional)' : "What didn't work well? (optional)"}</div>
+      <div class="chips">${chips.map(c => `<button class="chip">${c}</button>`).join('')}</div>
+      <textarea placeholder="Add a comment (optional)"></textarea>
+      <div class="fb-submit-row"><button class="btn-primary">Submit</button><button class="btn-text">Skip</button></div>`;
+    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
+    follow.querySelector('.btn-primary').addEventListener('click', () => done('Thanks — this helps tune your digest.'));
+    follow.querySelector('.btn-text').addEventListener('click', () => done('Thanks — this helps tune your digest.'));
+  }
+  function openReport() {
+    up.classList.remove('sel'); down.classList.remove('sel');
+    follow.style.display = 'block';
+    follow.innerHTML = `
+      <div class="cap" style="margin-bottom:7px;">What’s wrong?</div>
+      <div class="chips">${['Inaccurate','Inappropriate','Broken link','Wrong audience','Outdated'].map(c => `<button class="chip">${c}</button>`).join('')}</div>
+      <textarea placeholder="Describe the issue (optional)"></textarea>
+      <div class="fb-submit-row"><button class="btn-primary">Submit report</button><button class="btn-text">Cancel</button></div>`;
+    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
+    follow.querySelector('.btn-primary').addEventListener('click', () => done('Report sent to your admin. Thank you.'));
+    follow.querySelector('.btn-text').addEventListener('click', () => { follow.style.display = 'none'; follow.innerHTML = ''; });
+  }
+  up.addEventListener('click', () => openThumb('up'));
+  down.addEventListener('click', () => openThumb('down'));
+  rep.addEventListener('click', openReport);
   return wrap;
 }
 
@@ -527,7 +582,7 @@ function buildReport(ctx) {
   return wrap;
 }
 
-const BUILDERS = { thumbs: buildThumbs, rating: buildRating, relevant: buildRelevant, dismiss: buildDismiss, chips: buildChips, report: buildReport };
+const BUILDERS = { thumbs: buildThumbs, 'thumbs-report': buildThumbsReport, rating: buildRating, relevant: buildRelevant, dismiss: buildDismiss, chips: buildChips, report: buildReport };
 const buildMechanism = (m, ctx) => BUILDERS[m](ctx);
 
 function reportAffordance(scope) {
@@ -548,7 +603,6 @@ function itemExpandedHtml(it, showFb, revealClass) {
       <ul class="dd-bullets">${bullets}</ul>
       ${links}
       ${showFb ? `<div class="${revealClass}" data-fb="${it.id}"></div>` : ''}
-      ${state.report ? `<div class="item-report" data-report="${it.id}" style="margin-top:8px;"></div>` : ''}
     </div>`;
 }
 
@@ -582,14 +636,11 @@ function renderCollapsed() {
       <div class="dd-open-wrap"><button class="dd-open" id="btn-open">Open Digest</button></div>
     </div>`;
 
-  digestEl.querySelector('#btn-open').addEventListener('click', () => { state.placement = 'expanded-end'; refresh(); });
+  digestEl.querySelector('#btn-open').addEventListener('click', () => { state.placement = 'expanded-end-content'; state.tab = 'exploring'; refresh(); });
 
   if (state.placement === 'collapsed') {
     const slot = digestEl.querySelector('#slot-collapsed');
     slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest', label: 'Worth opening?' }));
-    if (state.report && state.mechanism !== 'report') {
-      const row = el(`<div style="margin-top:10px;"></div>`); row.appendChild(reportAffordance('digest')); slot.appendChild(row);
-    }
   }
 }
 
@@ -624,18 +675,15 @@ function renderExpanded() {
       </div>
       <hr class="dd-hr" />
       <div class="dd-sources">
-        <div class="fb-bar">
-          <p class="lbl">Sources</p>
-          <span id="foot-report"></span>
-        </div>
+        ${state.placement === 'expanded-end' ? `<div id="slot-exp-end" style="margin-bottom:16px;"></div>` : ''}
+        <p class="lbl">Sources</p>
         <div class="dd-source-tags">
           ${SOURCES.map((s,i) => `<span class="dd-src"><span class="n">${i+1}</span><span class="dot">•</span><span class="t">${s}</span></span>`).join('')}
         </div>
-        ${state.placement === 'expanded-end' ? `<div id="slot-exp-end" style="margin-top:12px;"></div>` : ''}
       </div>
     </div>`;
 
-  digestEl.querySelector('#btn-close').addEventListener('click', () => { state.placement = 'collapsed'; refresh(); });
+  digestEl.querySelector('#btn-close').addEventListener('click', () => { state.placement = 'collapsed'; state.tab = 'trash'; refresh(); });
 
   // mount feedback
   if (state.placement === 'expanded-top') {
@@ -653,59 +701,57 @@ function renderExpanded() {
   if (state.placement === 'per-item') {
     digestEl.querySelectorAll('.fb-inline-slot').forEach(slot => slot.appendChild(buildMechanism(state.mechanism, { scope: 'item' })));
   }
-
-  if (state.report && state.mechanism !== 'report') {
-    if (state.placement !== 'per-item') {
-      const foot = digestEl.querySelector('#foot-report'); if (foot) foot.appendChild(reportAffordance('digest'));
-    } else {
-      digestEl.querySelectorAll('.item-report').forEach(slot => slot.appendChild(reportAffordance('item')));
-    }
-  }
 }
 
 function render() { isOpen() ? renderExpanded() : renderCollapsed(); }
 
 /* ============================================================ Controls ============================================================ */
+function setTab(tab) {
+  state.tab = tab;
+  const bucket = bucketForTab(tab);
+  if (!PLACEMENTS.some(p => p.id === state.placement && p.bucket === bucket)) state.placement = FIRST[bucket].placement;
+  if (!MECHANISMS.some(m => m.id === state.mechanism && m.bucket === bucket)) state.mechanism = FIRST[bucket].mechanism;
+  refresh();
+}
+
 function renderControls() {
+  const bucket = bucketForTab(state.tab);
+  document.getElementById('tab-exploring').classList.toggle('active', state.tab === 'exploring');
+  document.getElementById('tab-trash').classList.toggle('active', state.tab === 'trash');
+  document.getElementById('trash-note').style.display = state.tab === 'trash' ? 'block' : 'none';
+  document.getElementById('mech-label').textContent = state.tab === 'trash' ? 'Mechanism' : 'Feedback style';
+
   const ps = document.getElementById('seg-placement'); ps.innerHTML = '';
-  PLACEMENTS.forEach(p => {
+  PLACEMENTS.filter(p => p.bucket === bucket).forEach(p => {
     const b = el(`<button class="${state.placement === p.id ? 'active' : ''}">${p.label}</button>`);
     b.addEventListener('click', () => { state.placement = p.id; refresh(); });
     ps.appendChild(b);
   });
-  document.getElementById('placement-hint').textContent = PLACEMENTS.find(p => p.id === state.placement).hint;
+  document.getElementById('placement-hint').textContent = (PLACEMENTS.find(p => p.id === state.placement) || {}).hint || '';
 
   const ms = document.getElementById('seg-mechanism'); ms.innerHTML = '';
-  MECHANISMS.forEach(m => {
+  MECHANISMS.filter(m => m.bucket === bucket).forEach(m => {
     const b = el(`<button class="${state.mechanism === m.id ? 'active' : ''}">${m.label}${m.tag ? `<span class="tag">${m.tag}</span>` : ''}</button>`);
     b.addEventListener('click', () => { state.mechanism = m.id; refresh(); });
     ms.appendChild(b);
   });
-  document.getElementById('mechanism-hint').textContent = MECHANISMS.find(m => m.id === state.mechanism).hint;
-
-  const tgReveal = document.getElementById('tg-reveal');
-  tgReveal.classList.toggle('on', state.reveal);
-  tgReveal.classList.toggle('disabled', state.placement !== 'per-item');
-  tgReveal.onclick = () => { state.reveal = !state.reveal; refresh(); };
-
-  const tgReport = document.getElementById('tg-report');
-  tgReport.classList.toggle('on', state.report);
-  tgReport.onclick = () => { state.report = !state.report; refresh(); };
+  document.getElementById('mechanism-hint').textContent = (MECHANISMS.find(m => m.id === state.mechanism) || {}).hint || '';
 
   renderReadout();
 }
 
 function renderReadout() {
   const p = PLACEMENTS.find(x => x.id === state.placement), m = MECHANISMS.find(x => x.id === state.mechanism);
-  let warn = '';
-  if (state.placement === 'collapsed' && ['rating','chips'].includes(state.mechanism)) warn = 'Rich input before reading is a lot to ask on a teaser — expect low response.';
-  if (state.placement === 'per-item' && state.mechanism === 'report') warn = 'Report-only per item gives no everyday relevance signal — only failures.';
-  if (state.reveal && state.placement === 'per-item') warn = 'Hover-reveal has no equivalent on touch — much of the digest is read on mobile.';
-  if (state.mechanism === 'dismiss' && state.placement !== 'per-item') warn = 'Dismiss-as-signal is really a per-item pattern; whole-digest here is a stretch.';
+  const parked = state.tab === 'trash';
   document.getElementById('readout').innerHTML =
     `<b>${p.label}</b> × <b>${m.label}</b>` +
-    (warn ? `<span class="warnline">⚠ ${warn}</span>` : `<span style="display:block;margin-top:6px;color:var(--ink-3)">A plausible pairing — compare it against the others.</span>`);
+    (parked
+      ? `<span class="warnline">⚠ Parked — not being pursued. Kept here for reference.</span>`
+      : `<span style="display:block;margin-top:6px;color:var(--ink-3)">Active direction — compare against the others.</span>`);
 }
+
+document.getElementById('tab-exploring').addEventListener('click', () => setTab('exploring'));
+document.getElementById('tab-trash').addEventListener('click', () => setTab('trash'));
 
 function refresh() { renderControls(); render(); }
 refresh();
