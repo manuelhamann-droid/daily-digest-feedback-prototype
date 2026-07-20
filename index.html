@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily Digest · Feedback Exploration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ---------- Staffbase design tokens (from @staffbase/design + Figma) ---------- */
+  :root {
+    --sb-brand:        #006cff;
+    --sb-brand-ink:    #004eb9;   /* link / hover */
+    --sb-brand-tint:   #ecf4ff;
+    --sb-ai-1:         #006cff;   /* Your Digest gradient */
+    --sb-ai-2:         #974fe1;
+    --sb-ai-purple:    #6d28d9;
+
+    --ink:             #171719;   /* neutral/strong */
+    --ink-2:           #545459;   /* neutral/medium */
+    --ink-3:           #9b9ba0;   /* neutral/placeholder */
+    --ink-4:           #86868c;   /* neutral 500 */
+    --line:            #e2e2e4;   /* neutral-weak */
+    --line-2:          #eeeef0;
+    --neutral-medium:  #ececef;   /* selected chip / thumb bg */
+    --surface:         #ffffff;
+    --neutral-base:    #f8f8f9;   /* bg-neutral-base */
+    --canvas:          #e9ebf0;
+
+    --pill-primary-bg: #dbe8ff;
+    --pill-primary-fg: #004eb9;
+    --pill-neutral-bg: #ececef;
+    --pill-neutral-fg: #343438;
+
+    --crit:            #d9380a;
+    --crit-tint:       #fff1ec;
+
+    --radius:          16px;
+    --radius-sm:       8px;
+    --radius-xs:       4px;
+    --radius-pill:     999px;
+    --shadow-card:     0 1px 3px rgba(20,20,40,.05), 0 8px 30px rgba(20,20,40,.08);
+    --shadow-src:      0 1px 0.5px rgba(0,0,0,.05), 0 2px 1px rgba(0,0,0,.05);
+    --font:            'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    color: var(--ink);
+    background: var(--canvas);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.45;
+  }
+
+  .app { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
+  @media (max-width: 940px) { .app { grid-template-columns: 1fr; } }
+
+  /* ---------- Control panel ---------- */
+  .panel {
+    background: var(--surface); border-right: 1px solid var(--line);
+    padding: 22px 20px 40px; position: sticky; top: 0; align-self: start;
+    height: 100vh; overflow-y: auto;
+  }
+  @media (max-width: 940px) { .panel { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); } }
+  .panel h1 { font-size: 15px; letter-spacing: -.01em; margin: 0 0 2px; }
+  .panel .sub { color: var(--ink-3); font-size: 12.5px; margin: 0 0 20px; }
+
+  .ctl { margin-bottom: 22px; }
+  .ctl > .label {
+    display: flex; align-items: baseline; justify-content: space-between;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3); margin-bottom: 8px;
+  }
+  .ctl .hint { font-size: 12.5px; color: var(--ink-3); margin-top: 8px; line-height: 1.4; }
+
+  .seg { display: flex; flex-direction: column; gap: 6px; }
+  .seg button {
+    text-align: left; width: 100%; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface);
+    border-radius: var(--radius-sm); padding: 9px 11px;
+    font-family: inherit; font-size: 13px; color: var(--ink-2);
+    display: flex; align-items: center; gap: 9px; transition: all .12s ease;
+  }
+  .seg button:hover { border-color: #cdced4; background: var(--neutral-base); }
+  .seg button.active { border-color: var(--sb-brand); background: var(--sb-brand-tint); color: var(--sb-brand-ink); font-weight: 600; }
+  .seg button .tag {
+    margin-left: auto; font-size: 10px; font-weight: 600; letter-spacing: .04em;
+    color: var(--sb-brand); background: #fff; border: 1px solid var(--sb-brand);
+    border-radius: var(--radius-pill); padding: 1px 7px; text-transform: uppercase;
+  }
+  .seg button.active .tag { background: var(--sb-brand); color: #fff; border-color: var(--sb-brand); }
+
+  .switch-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+  .switch-row .txt { font-size: 13px; color: var(--ink-2); }
+  .toggle {
+    --w: 40px; --h: 22px; position: relative; width: var(--w); height: var(--h);
+    border-radius: var(--radius-pill); background: #cdced4; cursor: pointer;
+    transition: background .15s ease; flex: none;
+  }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s ease;
+  }
+  .toggle.on { background: var(--sb-brand); }
+  .toggle.on::after { transform: translateX(18px); }
+  .toggle.disabled { opacity: .4; pointer-events: none; }
+
+  .divider { height: 1px; background: var(--line); margin: 20px 0; }
+  .combo-readout { background: var(--neutral-base); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 11px 12px; font-size: 12px; color: var(--ink-2); }
+  .combo-readout b { color: var(--ink); }
+  .combo-readout .warnline { color: #a36723; margin-top: 6px; display: block; }
+  .cap { font-size: 11px; color: var(--ink-3); }
+
+  /* ---------- Stage ---------- */
+  .stage { padding: 44px 24px 90px; display: flex; flex-direction: column; align-items: center; }
+  .stage-head { text-align: center; margin-bottom: 26px; max-width: 560px; }
+  .stage-head h2 { font-size: 12px; color: var(--ink-3); font-weight: 600; margin: 0 0 4px; letter-spacing:.06em; text-transform: uppercase; }
+  .stage-head p { margin: 0; color: var(--ink-3); font-size: 13px; }
+
+  /* ---------- Digest card ---------- */
+  .dd-card {
+    background: var(--surface); border-radius: var(--radius);
+    box-shadow: var(--shadow-card); overflow: hidden; width: 440px; max-width: 100%;
+    transition: width .25s ease;
+  }
+  .dd-card.expanded { width: 920px; }
+
+  .dd-top { padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+  .dd-tagrow { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .dd-pill-brand {
+    display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 8px;
+    border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; line-height: 18px; color: var(--ink);
+    background: linear-gradient(#fff,#fff) padding-box, linear-gradient(189deg, var(--sb-ai-1) 0%, var(--sb-ai-2) 81%) border-box;
+    border: 1px solid transparent;
+  }
+  .dd-pill-brand svg { width: 13px; height: 13px; color: var(--sb-ai-2); }
+  .dd-close { background: none; border: none; cursor: pointer; color: var(--ink-3); padding: 2px; line-height: 0; border-radius: var(--radius-xs); }
+  .dd-close:hover { color: var(--ink); background: var(--neutral-base); }
+  .dd-close svg { width: 20px; height: 20px; }
+  .dd-headline { font-size: 24px; font-weight: 600; line-height: 32px; color: #000; margin: 0; letter-spacing: -.01em; }
+
+  .dd-hr { height: 1px; background: var(--line); border: none; margin: 0; }
+
+  .dd-section-pill {
+    display: inline-flex; align-self: flex-start; align-items: center; padding: 3px 10px; border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 600; line-height: 16px;
+  }
+  .dd-section-pill.primary { background: var(--pill-primary-bg); color: var(--pill-primary-fg); }
+  .dd-section-pill.neutral { background: var(--pill-neutral-bg); color: var(--pill-neutral-fg); }
+
+  .dd-item { }
+  .dd-item-title { font-size: 16px; font-weight: 600; line-height: 22px; color: #000; margin: 0 0 6px; }
+  .dd-item-title sup { font-size: 10px; font-weight: 600; margin-left: 1px; }
+  .dd-bullets { margin: 0; padding-left: 22px; }
+  .dd-bullets li { font-size: 16px; line-height: 24px; color: var(--ink); margin: 0; }
+  .dd-bullets li::marker { color: var(--ink); }
+  .dd-links { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+  .dd-links a { font-size: 14px; line-height: 18px; text-decoration: none; }
+  .dd-links a .arrow { color: var(--ink); margin-right: 6px; }
+  .dd-links a .lk { color: var(--sb-brand-ink); }
+  .dd-links a:hover .lk { text-decoration: underline; }
+
+  /* Expanded two-column content */
+  .dd-content { padding: 24px 16px; }
+  .dd-cols { display: flex; gap: 24px; align-items: stretch; }
+  .dd-col { flex: 1 0 0; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+  .dd-vdivider { width: 1px; background: var(--line); align-self: stretch; flex: none; }
+
+  /* Sources */
+  .dd-sources { padding: 16px; background: var(--surface); display: flex; flex-direction: column; gap: 8px; }
+  .dd-sources > .lbl { font-size: 14px; line-height: 18px; color: var(--ink); margin: 0; }
+  .dd-source-tags { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .dd-src {
+    display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px;
+    background: var(--neutral-base); border-radius: var(--radius-sm); box-shadow: var(--shadow-src);
+  }
+  .dd-src .n { font-size: 12px; color: var(--ink-2); }
+  .dd-src .dot { font-size: 12px; color: var(--ink-3); }
+  .dd-src .t { font-size: 12px; font-weight: 500; color: var(--ink); }
+
+  /* Collapsed body */
+  .dd-collapsed { position: relative; padding: 0 24px; }
+  .dd-collapsed .dd-section { margin-bottom: 18px; }
+  .dd-collapsed .dd-section-pill { margin-bottom: 12px; }
+  .dd-collapsed .dd-item { margin-bottom: 14px; }
+  .dd-collapsed .dd-item.faded { opacity: 1; }
+  .dd-fade {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 150px; pointer-events: none;
+    background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, #fff 78%);
+  }
+  .dd-open-wrap { position: relative; display: flex; justify-content: center; padding: 4px 0 24px; margin-top: -46px; }
+  .dd-open {
+    background: var(--sb-brand); color: #fff; border: none; cursor: pointer; font-family: inherit;
+    font-size: 14px; font-weight: 600; padding: 9px 20px; border-radius: var(--radius-sm);
+    box-shadow: 0 2px 8px rgba(0,108,255,.3);
+  }
+  .dd-open:hover { background: var(--sb-brand-ink); }
+
+  /* ---------- Feedback widgets (Staffbase-styled) ---------- */
+  .fb { font-size: 13px; }
+  .fb-block { background: var(--neutral-base); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 13px; }
+  .fb-prompt { color: var(--ink-2); margin-bottom: 9px; display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .fb-prompt .sparkle { color: var(--sb-ai-2); display: inline-flex; }
+  .fb-prompt .sparkle svg { width: 14px; height: 14px; }
+  .fb-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border: 1px solid var(--line); background: var(--surface); cursor: pointer;
+    border-radius: var(--radius-sm); padding: 6px 10px; font-family: inherit; font-size: 13px;
+    color: var(--ink-2); transition: all .12s ease;
+  }
+  .icon-btn:hover { background: var(--neutral-base); color: var(--ink); }
+  .icon-btn svg { width: 16px; height: 16px; }
+  /* Digest thumbs use the NEUTRAL selected state (matches the real DailyDigest component) */
+  .icon-btn.sel { border-color: #cdced4; background: var(--neutral-medium); color: var(--ink); }
+  .icon-btn.round { padding: 6px; width: 32px; height: 32px; border-radius: var(--radius-sm); }
+
+  .stars { display: inline-flex; gap: 3px; }
+  .stars .star { cursor: pointer; color: #cdced4; transition: color .1s ease; line-height: 1; }
+  .stars .star svg { width: 22px; height: 22px; display: block; }
+  .stars .star.on { color: #f5a623; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chip {
+    cursor: pointer; border: 1px solid var(--line); background: var(--surface);
+    border-radius: var(--radius-sm); padding: 5px 10px; font-size: 13px; color: var(--ink);
+    font-family: inherit; transition: all .12s ease;
+  }
+  .chip:hover { background: var(--neutral-base); }
+  .chip.sel { border-color: #cdced4; background: var(--neutral-medium); color: var(--ink); font-weight: 500; }
+
+  .fb-followup { margin-top: 10px; }
+  .fb-followup textarea {
+    width: 100%; resize: vertical; min-height: 54px; font-family: inherit; font-size: 13px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 10px; color: var(--ink);
+  }
+  .fb-followup textarea:focus { outline: 2px solid var(--sb-brand-tint); border-color: var(--sb-brand); }
+  .fb-submit-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .btn-primary { background: var(--sb-brand); color: #fff; border: none; cursor: pointer; border-radius: var(--radius-sm); padding: 7px 14px; font-family: inherit; font-size: 13px; font-weight: 600; }
+  .btn-primary:hover { background: var(--sb-brand-ink); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-text { background: none; border: none; color: var(--ink-3); cursor: pointer; font-family: inherit; font-size: 12.5px; }
+  .btn-text:hover { color: var(--ink-2); text-decoration: underline; }
+  .fb-thanks { color: var(--ink); font-weight: 500; display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .fb-thanks svg { width: 16px; height: 16px; color: #1d8713; }
+
+  .report-link { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-3); background: none; border: none; cursor: pointer; font-family: inherit; font-size: 12.5px; padding: 0; }
+  .report-link:hover { color: var(--crit); }
+  .report-link svg { width: 14px; height: 14px; }
+
+  /* per-item feedback slot */
+  .fb-inline-slot { margin-top: 10px; }
+  .fb-inline-slot.reveal { opacity: 0; transition: opacity .15s ease; }
+  .dd-item:hover .fb-inline-slot.reveal { opacity: 1; }
+  .item-fb-compact { display: flex; align-items: center; gap: 6px; }
+  .item-report { display: inline-flex; }
+
+  /* whole-digest feedback bars */
+  .fb-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ============ CONTROL PANEL ============ -->
+  <aside class="panel">
+    <h1>Daily Digest · Feedback Lab</h1>
+    <p class="sub">Compare where and how end users give feedback on the AI-curated digest. Nothing here is a recommendation.</p>
+
+    <div class="ctl">
+      <div class="label"><span>Placement</span></div>
+      <div class="seg" id="seg-placement"></div>
+      <div class="hint" id="placement-hint"></div>
+    </div>
+
+    <div class="ctl">
+      <div class="label"><span>Mechanism</span></div>
+      <div class="seg" id="seg-mechanism"></div>
+      <div class="hint" id="mechanism-hint"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="ctl">
+      <div class="switch-row">
+        <span class="txt">Reveal on hover / tap<br><span class="cap">vs. always inline</span></span>
+        <div class="toggle" id="tg-reveal"></div>
+      </div>
+      <div class="switch-row">
+        <span class="txt">Always-available “Report issue”<br><span class="cap">secondary affordance</span></span>
+        <div class="toggle on" id="tg-report"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="combo-readout" id="readout"></div>
+  </aside>
+
+  <!-- ============ STAGE ============ -->
+  <main class="stage">
+    <div class="stage-head">
+      <h2>End-user preview</h2>
+      <p>Collapsed shows the teaser + “Open Digest”. Selecting an expanded placement opens the full view. Feedback updates live with the switcher.</p>
+    </div>
+    <div id="digest"></div>
+  </main>
+</div>
+
+<script>
+/* ============================================================ State ============================================================ */
+const PLACEMENTS = [
+  { id: 'collapsed',    label: 'Collapsed digest (whole)', hint: 'Reaction before opening — captures non-openers, but reflects the teaser, not the curation.' },
+  { id: 'expanded-top', label: 'Expanded digest — top',    hint: 'One control below the headline. High visibility, but asked before the person has read anything.' },
+  { id: 'expanded-end-content', label: 'Expanded — end (in content)', hint: 'At the end of the content, above the Sources divider — feels part of the digest itself.' },
+  { id: 'expanded-end', label: 'Expanded — end (footer)',  hint: 'Below the Sources divider, in the footer area. Reflects the whole read, but only reaches people who scroll down.' },
+  { id: 'per-item',     label: 'Per content item',         hint: 'Richest attribution for curation tuning — and the highest friction and visual noise.' },
+];
+const MECHANISMS = [
+  { id: 'thumbs',   label: 'Thumbs + follow-up', tag: 'Hero', hint: 'Familiar one-tap valence; the follow-up (reason chips / free text) is the signal we actually want.' },
+  { id: 'rating',   label: 'Rating scale (1–5)', hint: 'More granular than binary, but higher load and no reason unless paired with a follow-up.' },
+  { id: 'relevant', label: '“Was this relevant?”', hint: 'Frames feedback as personal fit, not judging a colleague — lower social cost, still valence-only.' },
+  { id: 'dismiss',  label: 'Dismiss as signal', hint: 'Near-zero friction, rides an action people already take — but ambiguous and implicit.' },
+  { id: 'chips',    label: 'Reason chips (no valence)', hint: 'Jumps straight to the reason; no clean sentiment axis and chip wording biases answers.' },
+  { id: 'report',   label: 'Report issue only', tag: 'Escape', hint: 'For things that are wrong, not just unhelpful. Rare but high-value; different question than relevance.' },
+];
+
+const state = { placement: 'expanded-end', mechanism: 'thumbs', reveal: false, report: true };
+const isOpen = () => state.placement !== 'collapsed';
+
+/* ============================================================ Icons ============================================================ */
+const I = {
+  sparkle: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.05 3.05a1 1 0 0 1 1.9 0l1.2 3.6a3 3 0 0 0 1.9 1.9l3.6 1.2a1 1 0 0 1 0 1.9l-3.6 1.2a3 3 0 0 0-1.9 1.9l-1.2 3.6a1 1 0 0 1-1.9 0l-1.2-3.6a3 3 0 0 0-1.9-1.9l-3.6-1.2a1 1 0 0 1 0-1.9l3.6-1.2a3 3 0 0 0 1.9-1.9l1.2-3.6Z"/><path d="M19 14.5l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5.5-1.5Z"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V3"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77 5.82 21l1.18-6.88-5-4.87 7.1-1.01L12 2z"/></svg>',
+  flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+};
+
+/* ============================================================ Digest content (from the real Figma / repo mock) ============================================================ */
+const SECTIONS = [
+  {
+    id: 'action', pill: 'Action Required', pillType: 'primary',
+    items: [
+      {
+        id: 'demo', title: 'Friday: Product Demo Event', sup: '1',
+        bullets: ['FRI · 3:00 PM · Online', "See what's shipping next, including updates to our AI chatbot."],
+        links: ['Register here to attend.', 'Find more information here.'],
+        collapsedTitle: 'Friday: Product Demo Event',
+        collapsed: ['FRI · 3:00 PM · Online', 'Register by Tuesday.'],
+      },
+      {
+        id: 'townhall', title: 'Next Week: Quarter Townhall Agenda', sup: '3',
+        bullets: ['Q3 Townhall is happening <b>next Wednesday (06.06)</b>', 'Meet new leaders, Director of Customer Success and Head of Data, and hear the Q3 agenda.', '<b>Livestream invites</b> are in your calendar.'],
+        collapsedTitle: 'Next Week: Quarter Townhall',
+        collapsed: ['WED · 3:00 PM · Online', 'Livestream invites are in your calendar.'],
+      },
+    ],
+  },
+  {
+    id: 'info', pill: 'Stay Informed', pillType: 'neutral',
+    items: [
+      {
+        id: 'berlin', title: 'Berlin closes a strong quarter', sup: '2,3',
+        bullets: ['Several bit wins at the quarter end contributed reaching our revenue growth goals.', 'Most exciting new logo: ACME corp'],
+        collapsedTitle: 'Berlin closes a strong quarter',
+        collapsed: ['Several bit wins at the quarter end contributed reaching our revenue growth goals.', 'Most exciting new logo: ACME corp'],
+        faded: true,
+      },
+    ],
+  },
+];
+const SOURCES = ['Q3 Product Demo', 'Big wins at the Berlin Office', 'Prepare for the Quarterly Townhall'];
+const HEADLINE = 'Heads up: Two company events are coming soon';
+
+/* ============================================================ DOM helpers ============================================================ */
+function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
+function thanks() { return `<span class="fb-thanks">${I.check} Thanks — this helps tune your digest.</span>`; }
+
+/* ============================================================ Feedback builders ============================================================ */
+// negative reasons mirror the real DailyDigest feedback dialog
+const NEG_REASONS = ['Irrelevant content', 'Outdated information', 'Missing important updates', 'Too long', 'Hard to understand', 'Other'];
+const POS_REASONS = ['Spot on', 'Good timing', 'More like this'];
+
+function buildThumbs(ctx) {
+  const wrap = el(`<div class="fb"></div>`);
+  const compact = ctx.scope === 'item';
+  wrap.innerHTML = `
+    <div class="${compact ? 'item-fb-compact' : 'fb-actions'}">
+      ${compact ? '' : `<span class="cap" style="margin-right:2px;">${ctx.label || 'Was this digest useful?'}</span>`}
+      <button class="icon-btn up round" title="Helpful">${I.up}</button>
+      <button class="icon-btn down round" title="Not helpful">${I.down}</button>
+    </div>
+    <div class="fb-followup" style="display:none;"></div>`;
+  const up = wrap.querySelector('.up'), down = wrap.querySelector('.down'), follow = wrap.querySelector('.fb-followup');
+  function openFollow(v) {
+    up.classList.toggle('sel', v === 'up'); down.classList.toggle('sel', v === 'down');
+    const chips = v === 'up' ? POS_REASONS : NEG_REASONS;
+    follow.style.display = 'block';
+    follow.innerHTML = `
+      <div class="cap" style="margin-bottom:7px;">${v === 'up' ? 'Nice — what worked? (optional)' : "What didn't work well? (optional)"}</div>
+      <div class="chips">${chips.map(c => `<button class="chip">${c}</button>`).join('')}</div>
+      <textarea placeholder="Add a comment (optional)"></textarea>
+      <div class="fb-submit-row"><button class="btn-primary">Submit</button><button class="btn-text">Skip</button></div>`;
+    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
+    follow.querySelector('.btn-primary').addEventListener('click', done);
+    follow.querySelector('.btn-text').addEventListener('click', done);
+  }
+  function done() { wrap.innerHTML = `<div class="${ctx.scope === 'item' ? 'item-fb-compact' : ''}">${thanks()}</div>`; }
+  up.addEventListener('click', () => openFollow('up'));
+  down.addEventListener('click', () => openFollow('down'));
+  return wrap;
+}
+
+function buildRating(ctx) {
+  const wrap = el(`<div class="fb"></div>`);
+  wrap.innerHTML = `
+    <div class="fb-actions">
+      <span class="cap" style="margin-right:6px;">${ctx.scope === 'item' ? 'Rate this item' : (ctx.label || 'How useful was this digest?')}</span>
+      <div class="stars">${[1,2,3,4,5].map(n => `<span class="star" data-n="${n}">${I.star}</span>`).join('')}</div>
+    </div>
+    <div class="fb-followup" style="display:none;"></div>`;
+  const stars = [...wrap.querySelectorAll('.star')], follow = wrap.querySelector('.fb-followup');
+  let chosen = 0;
+  const paint = n => stars.forEach((s,i) => s.classList.toggle('on', i < n));
+  stars.forEach(s => {
+    s.addEventListener('mouseenter', () => paint(+s.dataset.n));
+    s.addEventListener('mouseleave', () => paint(chosen));
+    s.addEventListener('click', () => {
+      chosen = +s.dataset.n; paint(chosen);
+      follow.style.display = 'block';
+      follow.innerHTML = `
+        <div class="cap" style="margin:8px 0 6px;">${chosen <= 3 ? 'What would make it better? (optional)' : 'Anything you especially liked? (optional)'}</div>
+        <textarea placeholder="Add a comment (optional)"></textarea>
+        <div class="fb-submit-row"><button class="btn-primary">Submit</button><button class="btn-text">Skip</button></div>`;
+      const d = () => wrap.innerHTML = thanks();
+      follow.querySelector('.btn-primary').addEventListener('click', d);
+      follow.querySelector('.btn-text').addEventListener('click', d);
+    });
+  });
+  return wrap;
+}
+
+function buildRelevant(ctx) {
+  const wrap = el(`<div class="fb"></div>`);
+  wrap.innerHTML = `
+    <div class="${ctx.scope === 'item' ? 'item-fb-compact' : 'fb-actions'}">
+      <span class="cap" style="margin-right:2px;">${ctx.scope === 'item' ? 'Relevant to you?' : 'Was this digest relevant to you?'}</span>
+      <button class="icon-btn" data-v="yes">${I.check} Yes</button>
+      <button class="icon-btn" data-v="no">Not for me</button>
+    </div>
+    <div class="fb-followup" style="display:none;"></div>`;
+  const follow = wrap.querySelector('.fb-followup');
+  wrap.querySelectorAll('[data-v]').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.v === 'yes') { wrap.innerHTML = thanks(); return; }
+    b.classList.add('sel'); follow.style.display = 'block';
+    follow.innerHTML = `
+      <div class="chips">${['Not my role','Wrong topic','Bad timing','Too generic'].map(c => `<button class="chip">${c}</button>`).join('')}</div>
+      <div class="fb-submit-row"><button class="btn-primary">Submit</button><button class="btn-text">Skip</button></div>`;
+    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
+    const d = () => wrap.innerHTML = thanks();
+    follow.querySelector('.btn-primary').addEventListener('click', d);
+    follow.querySelector('.btn-text').addEventListener('click', d);
+  }));
+  return wrap;
+}
+
+function buildDismiss(ctx) {
+  if (ctx.scope !== 'item') {
+    const wrap = el(`<div class="fb fb-actions"></div>`);
+    wrap.innerHTML = `<button class="icon-btn">${I.x} Not interested today</button><span class="cap">Hiding is treated as a quiet “less like this”.</span>`;
+    wrap.querySelector('button').addEventListener('click', () => wrap.innerHTML = `<span class="cap">Hidden. We’ll show fewer like this. <button class="btn-text" style="padding:0">Undo</button></span>`);
+    return wrap;
+  }
+  const wrap = el(`<div class="fb item-fb-compact"></div>`);
+  wrap.innerHTML = `<button class="icon-btn round" title="Dismiss (not interested)">${I.x}</button><span class="cap">Dismiss = quiet “less like this”</span>`;
+  wrap.querySelector('button').addEventListener('click', () => {
+    const item = wrap.closest('.dd-item');
+    if (item) { item.style.transition = 'opacity .2s'; item.style.opacity = '.35'; }
+    wrap.innerHTML = `<span class="cap">Dismissed — logged as a negative signal. <button class="btn-text" style="padding:0">Undo</button></span>`;
+    const undo = wrap.querySelector('.btn-text');
+    undo && undo.addEventListener('click', () => { if (item) item.style.opacity = '1'; render(); });
+  });
+  return wrap;
+}
+
+function buildChips(ctx) {
+  const wrap = el(`<div class="fb"></div>`);
+  const chips = ctx.scope === 'item'
+    ? ['More like this','Not relevant','Too long','Wrong timing','Already knew']
+    : ['Well curated','Too long','Missed something','Wrong priority order','Not relevant to me'];
+  wrap.innerHTML = `
+    <div class="fb-prompt"><span class="sparkle">${I.sparkle}</span>${ctx.scope === 'item' ? 'Tell us about this item' : 'Tell us about today’s picks'}</div>
+    <div class="chips">${chips.map(c => `<button class="chip">${c}</button>`).join('')}</div>
+    <div class="fb-submit-row" style="display:none;"><button class="btn-primary">Submit</button></div>`;
+  const row = wrap.querySelector('.fb-submit-row');
+  wrap.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => {
+    ch.classList.toggle('sel'); row.style.display = wrap.querySelector('.chip.sel') ? 'flex' : 'none';
+  }));
+  row.querySelector('.btn-primary').addEventListener('click', () => wrap.innerHTML = thanks());
+  return wrap;
+}
+
+function buildReport(ctx) {
+  const wrap = el(`<div class="fb"></div>`);
+  wrap.innerHTML = `<button class="report-link">${I.flag} Report an issue with ${ctx.scope === 'item' ? 'this item' : 'this digest'}</button>
+    <div class="fb-followup" style="display:none;"></div>`;
+  const follow = wrap.querySelector('.fb-followup');
+  wrap.querySelector('.report-link').addEventListener('click', () => {
+    follow.style.display = 'block';
+    follow.innerHTML = `
+      <div class="fb-block" style="margin-top:8px;">
+        <div class="cap" style="margin-bottom:7px;">What’s wrong?</div>
+        <div class="chips">${['Inaccurate','Inappropriate','Broken link','Wrong audience','Outdated'].map(c => `<button class="chip">${c}</button>`).join('')}</div>
+        <textarea placeholder="Describe the issue (optional)" style="margin-top:9px;"></textarea>
+        <div class="fb-submit-row"><button class="btn-primary">Submit report</button><button class="btn-text">Cancel</button></div>
+      </div>`;
+    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
+    follow.querySelector('.btn-primary').addEventListener('click', () => wrap.innerHTML = `<span class="fb-thanks">${I.check} Report sent to your admin. Thank you.</span>`);
+    follow.querySelector('.btn-text').addEventListener('click', () => { follow.style.display = 'none'; follow.innerHTML = ''; });
+  });
+  return wrap;
+}
+
+const BUILDERS = { thumbs: buildThumbs, rating: buildRating, relevant: buildRelevant, dismiss: buildDismiss, chips: buildChips, report: buildReport };
+const buildMechanism = (m, ctx) => BUILDERS[m](ctx);
+
+function reportAffordance(scope) {
+  const b = el(`<button class="report-link" title="Report an issue">${I.flag}${scope === 'item' ? '' : ' Report issue'}</button>`);
+  b.addEventListener('click', e => { e.stopPropagation(); const pop = buildReport({ scope }); b.replaceWith(pop); pop.querySelector('.report-link').click(); });
+  return b;
+}
+
+/* ============================================================ Digest markup ============================================================ */
+const digestEl = document.getElementById('digest');
+
+function itemExpandedHtml(it, showFb, revealClass) {
+  const bullets = it.bullets.map(b => `<li>${b}</li>`).join('');
+  const links = it.links ? `<div class="dd-links">${it.links.map(l => `<a href="#"><span class="arrow">→</span><span class="lk">${l}</span></a>`).join('')}</div>` : '';
+  return `
+    <div class="dd-item" data-item="${it.id}">
+      <p class="dd-item-title">${it.title}<sup>${it.sup}</sup></p>
+      <ul class="dd-bullets">${bullets}</ul>
+      ${links}
+      ${showFb ? `<div class="${revealClass}" data-fb="${it.id}"></div>` : ''}
+      ${state.report ? `<div class="item-report" data-report="${it.id}" style="margin-top:8px;"></div>` : ''}
+    </div>`;
+}
+
+function itemCollapsedHtml(it) {
+  const lines = it.collapsed.map(l => `<li>${l}</li>`).join('');
+  return `
+    <div class="dd-item ${it.faded ? 'faded' : ''}">
+      <p class="dd-item-title">${it.collapsedTitle}</p>
+      <ul class="dd-bullets">${lines}</ul>
+    </div>`;
+}
+
+function renderCollapsed() {
+  const sectionsHtml = SECTIONS.map(sec => `
+    <div class="dd-section">
+      <span class="dd-section-pill ${sec.pillType}">${sec.pill}</span>
+      ${sec.items.map(itemCollapsedHtml).join('')}
+    </div>`).join('');
+
+  digestEl.innerHTML = `
+    <div class="dd-card">
+      <div class="dd-top">
+        <div class="dd-tagrow"><span class="dd-pill-brand">${I.sparkle} Your Digest</span></div>
+        <h1 class="dd-headline">${HEADLINE}</h1>
+      </div>
+      <div class="dd-collapsed">
+        ${sectionsHtml}
+        ${state.placement === 'collapsed' ? `<div class="dd-section" id="slot-collapsed" style="position:relative;z-index:2;"></div>` : ''}
+        <div class="dd-fade"></div>
+      </div>
+      <div class="dd-open-wrap"><button class="dd-open" id="btn-open">Open Digest</button></div>
+    </div>`;
+
+  digestEl.querySelector('#btn-open').addEventListener('click', () => { state.placement = 'expanded-end'; refresh(); });
+
+  if (state.placement === 'collapsed') {
+    const slot = digestEl.querySelector('#slot-collapsed');
+    slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest', label: 'Worth opening?' }));
+    if (state.report && state.mechanism !== 'report') {
+      const row = el(`<div style="margin-top:10px;"></div>`); row.appendChild(reportAffordance('digest')); slot.appendChild(row);
+    }
+  }
+}
+
+function renderExpanded() {
+  const showItemFb = state.placement === 'per-item';
+  const revealClass = state.reveal ? 'fb-inline-slot reveal' : 'fb-inline-slot';
+
+  const colHtml = sec => `
+    <div class="dd-col">
+      <span class="dd-section-pill ${sec.pillType}">${sec.pill}</span>
+      ${sec.items.map(it => itemExpandedHtml(it, showItemFb, revealClass)).join('')}
+    </div>`;
+
+  digestEl.innerHTML = `
+    <div class="dd-card expanded">
+      <div class="dd-top">
+        <div class="dd-tagrow">
+          <span class="dd-pill-brand">${I.sparkle} Your Digest</span>
+          <button class="dd-close" id="btn-close" title="Close">${I.close}</button>
+        </div>
+        <h1 class="dd-headline">${HEADLINE}</h1>
+      </div>
+      ${state.placement === 'expanded-top' ? `<div style="padding:0 24px 4px;"><div class="fb-block" id="slot-exp-top"></div></div>` : ''}
+      <hr class="dd-hr" />
+      <div class="dd-content">
+        <div class="dd-cols">
+          ${colHtml(SECTIONS[0])}
+          <div class="dd-vdivider"></div>
+          ${colHtml(SECTIONS[1])}
+        </div>
+        ${state.placement === 'expanded-end-content' ? `<div class="fb-block" id="slot-exp-end-content" style="margin-top:20px;"></div>` : ''}
+      </div>
+      <hr class="dd-hr" />
+      <div class="dd-sources">
+        <div class="fb-bar">
+          <p class="lbl">Sources</p>
+          <span id="foot-report"></span>
+        </div>
+        <div class="dd-source-tags">
+          ${SOURCES.map((s,i) => `<span class="dd-src"><span class="n">${i+1}</span><span class="dot">•</span><span class="t">${s}</span></span>`).join('')}
+        </div>
+        ${state.placement === 'expanded-end' ? `<div class="fb-block" id="slot-exp-end" style="margin-top:12px;"></div>` : ''}
+      </div>
+    </div>`;
+
+  digestEl.querySelector('#btn-close').addEventListener('click', () => { state.placement = 'collapsed'; refresh(); });
+
+  // mount feedback
+  if (state.placement === 'expanded-top') {
+    const slot = digestEl.querySelector('#slot-exp-top');
+    slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest', label: 'How’s today’s digest looking?' }));
+  }
+  if (state.placement === 'expanded-end') {
+    const slot = digestEl.querySelector('#slot-exp-end');
+    slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest' }));
+  }
+  if (state.placement === 'expanded-end-content') {
+    const slot = digestEl.querySelector('#slot-exp-end-content');
+    slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest' }));
+  }
+  if (state.placement === 'per-item') {
+    digestEl.querySelectorAll('.fb-inline-slot').forEach(slot => slot.appendChild(buildMechanism(state.mechanism, { scope: 'item' })));
+  }
+
+  if (state.report && state.mechanism !== 'report') {
+    if (state.placement !== 'per-item') {
+      const foot = digestEl.querySelector('#foot-report'); if (foot) foot.appendChild(reportAffordance('digest'));
+    } else {
+      digestEl.querySelectorAll('.item-report').forEach(slot => slot.appendChild(reportAffordance('item')));
+    }
+  }
+}
+
+function render() { isOpen() ? renderExpanded() : renderCollapsed(); }
+
+/* ============================================================ Controls ============================================================ */
+function renderControls() {
+  const ps = document.getElementById('seg-placement'); ps.innerHTML = '';
+  PLACEMENTS.forEach(p => {
+    const b = el(`<button class="${state.placement === p.id ? 'active' : ''}">${p.label}</button>`);
+    b.addEventListener('click', () => { state.placement = p.id; refresh(); });
+    ps.appendChild(b);
+  });
+  document.getElementById('placement-hint').textContent = PLACEMENTS.find(p => p.id === state.placement).hint;
+
+  const ms = document.getElementById('seg-mechanism'); ms.innerHTML = '';
+  MECHANISMS.forEach(m => {
+    const b = el(`<button class="${state.mechanism === m.id ? 'active' : ''}">${m.label}${m.tag ? `<span class="tag">${m.tag}</span>` : ''}</button>`);
+    b.addEventListener('click', () => { state.mechanism = m.id; refresh(); });
+    ms.appendChild(b);
+  });
+  document.getElementById('mechanism-hint').textContent = MECHANISMS.find(m => m.id === state.mechanism).hint;
+
+  const tgReveal = document.getElementById('tg-reveal');
+  tgReveal.classList.toggle('on', state.reveal);
+  tgReveal.classList.toggle('disabled', state.placement !== 'per-item');
+  tgReveal.onclick = () => { state.reveal = !state.reveal; refresh(); };
+
+  const tgReport = document.getElementById('tg-report');
+  tgReport.classList.toggle('on', state.report);
+  tgReport.onclick = () => { state.report = !state.report; refresh(); };
+
+  renderReadout();
+}
+
+function renderReadout() {
+  const p = PLACEMENTS.find(x => x.id === state.placement), m = MECHANISMS.find(x => x.id === state.mechanism);
+  let warn = '';
+  if (state.placement === 'collapsed' && ['rating','chips'].includes(state.mechanism)) warn = 'Rich input before reading is a lot to ask on a teaser — expect low response.';
+  if (state.placement === 'per-item' && state.mechanism === 'report') warn = 'Report-only per item gives no everyday relevance signal — only failures.';
+  if (state.reveal && state.placement === 'per-item') warn = 'Hover-reveal has no equivalent on touch — much of the digest is read on mobile.';
+  if (state.mechanism === 'dismiss' && state.placement !== 'per-item') warn = 'Dismiss-as-signal is really a per-item pattern; whole-digest here is a stretch.';
+  document.getElementById('readout').innerHTML =
+    `<b>${p.label}</b> × <b>${m.label}</b>` +
+    (warn ? `<span class="warnline">⚠ ${warn}</span>` : `<span style="display:block;margin-top:6px;color:var(--ink-3)">A plausible pairing — compare it against the others.</span>`);
+}
+
+function refresh() { renderControls(); render(); }
+refresh();
+</script>
+</body>
+</html>
