@@ -275,20 +275,20 @@
   /* grouped thumbs + report */
   .fb-sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
 
-  /* answer-choice hover tooltip (favourite) */
-  .fav-chip { position: relative; }
-  .fav-chip::after {
+  /* favourite: tooltip shown only when the option is ACTIVE (selected) and hovered */
+  .fav-tip { position: relative; }
+  .fav-tip::after {
     content: attr(data-tip); position: absolute; bottom: calc(100% + 7px); left: 50%;
     transform: translateX(-50%) translateY(3px); background: var(--ink); color: #fff;
     font-size: 11px; font-weight: 500; white-space: nowrap; padding: 4px 8px; border-radius: 6px;
     box-shadow: 0 6px 20px rgba(20,20,40,.18); opacity: 0; pointer-events: none; transition: opacity .12s ease, transform .12s ease; z-index: 5;
   }
-  .fav-chip::before {
+  .fav-tip::before {
     content: ''; position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%);
     border: 5px solid transparent; border-top-color: var(--ink); opacity: 0; transition: opacity .12s ease; z-index: 5;
   }
-  .fav-chip:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .fav-chip:hover::before { opacity: 1; }
+  .fav-tip.sel:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .fav-tip.sel:hover::before { opacity: 1; }
 
   /* feedback inline, aligned with the source pills row */
   .dd-src-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -633,8 +633,8 @@ function buildFavThumbs(ctx) {
   wrap.innerHTML = `
     <div class="fb-actions">
       ${showLabel ? `<span class="cap" style="margin-right:2px;">Was this digest relevant to you?</span>` : ''}
-      <button class="icon-btn up round" title="Relevant">${I.up}</button>
-      <button class="icon-btn down round" title="Not relevant">${I.down}</button>
+      <button class="icon-btn up round fav-tip" data-tip="Thank you for your feedback">${I.up}</button>
+      <button class="icon-btn down round fav-tip" data-tip="Thank you for your feedback">${I.down}</button>
     </div>
     <div class="fb-followup" style="display:none;"></div>`;
   const up = wrap.querySelector('.up'), down = wrap.querySelector('.down'), follow = wrap.querySelector('.fb-followup');
@@ -648,7 +648,7 @@ function buildFavThumbs(ctx) {
     // Hovering an answer choice surfaces a "Thank you for your feedback" tooltip.
     follow.innerHTML = `
       <div class="cap" style="margin-bottom:7px;">${v === 'up' ? 'What worked?' : 'What was off?'}</div>
-      <div class="chips">${chips.map(c => `<button class="chip fav-chip" data-tip="Thank you for your feedback">${c}</button>`).join('')}</div>`;
+      <div class="chips">${chips.map(c => `<button class="chip fav-tip" data-tip="Thank you for your feedback">${c}</button>`).join('')}</div>`;
     follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
   }
   up.addEventListener('click', () => openFollow('up'));
