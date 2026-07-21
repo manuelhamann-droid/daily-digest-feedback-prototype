@@ -379,7 +379,7 @@ const FIRST = {
 };
 const bucketForTab = (tab) => (tab === 'trash' ? 'trash' : tab === 'favorite' ? 'favorite' : 'active');
 
-const state = { tab: 'exploring', placement: 'expanded-end-content', mechanism: 'thumbs', showQuestion: true, reveal: false, report: false };
+const state = { tab: 'favorite', placement: 'fav-content', mechanism: 'fav-thumbs', showQuestion: true, reveal: false, report: false };
 const isOpen = () => state.placement !== 'collapsed';
 
 /* ============================================================ Icons ============================================================ */
