@@ -627,15 +627,20 @@ function buildFavThumbs(ctx) {
   const NEG = ['Not relevant to me', 'Missed something important', 'Too much / too long', 'Wrong priority order', 'Already knew this'];
   function openFollow(v) {
     up.classList.toggle('sel', v === 'up'); down.classList.toggle('sel', v === 'down');
+    // once a vote is cast, hovering the thumbs confirms the feedback was captured
+    up.title = down.title = 'Thank you for your feedback';
     const chips = v === 'up' ? POS : NEG;
     follow.style.display = 'block';
+    // No Submit/Skip — chips toggle directly (selecting is recording); an ack appears once something is chosen.
     follow.innerHTML = `
       <div class="cap" style="margin-bottom:7px;">${v === 'up' ? 'What worked?' : 'What was off?'}</div>
       <div class="chips">${chips.map(c => `<button class="chip">${c}</button>`).join('')}</div>
-      <div class="fb-submit-row"><button class="btn-primary">Submit</button><button class="btn-text">Skip</button></div>`;
-    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
-    follow.querySelector('.btn-primary').addEventListener('click', () => wrap.innerHTML = thanks());
-    follow.querySelector('.btn-text').addEventListener('click', () => wrap.innerHTML = thanks());
+      <div class="fb-thanks fav-ack" style="display:none; margin-top:10px;">${I.check} Thank you for your feedback</div>`;
+    const ack = follow.querySelector('.fav-ack');
+    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => {
+      ch.classList.toggle('sel');
+      ack.style.display = follow.querySelector('.chip.sel') ? 'flex' : 'none';
+    }));
   }
   up.addEventListener('click', () => openFollow('up'));
   down.addEventListener('click', () => openFollow('down'));
