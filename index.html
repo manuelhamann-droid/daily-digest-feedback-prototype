@@ -113,8 +113,8 @@
   .combo-readout b { color: var(--ink); }
   .combo-readout .warnline { color: #a36723; margin-top: 6px; display: block; }
   .cap { font-size: 11px; color: var(--ink-3); }
-  /* feedback question / follow-up title — label/sm: 14px medium, neutral-strong */
-  .fb-question { font-size: 14px; font-weight: 500; line-height: 18px; color: var(--ink); }
+  /* feedback question / follow-up title — a touch smaller & softer than body text */
+  .fb-question { font-size: 13px; font-weight: 500; line-height: 18px; color: var(--ink-2); }
 
   /* ---------- Stage ---------- */
   .stage { padding: 44px 24px 90px; display: flex; flex-direction: column; align-items: center; }
@@ -388,8 +388,6 @@ const MECHANISMS = [
   { id: 'chips',    bucket: 'trash', label: 'Reason chips (no valence)', hint: 'Parked: no clean sentiment axis; adds another block.' },
   { id: 'fav-thumbs',  bucket: 'favorite', label: 'Follow-up: inline (bare)', hint: 'Reasons inline, no container; re-click the active thumb to collapse.' },
   { id: 'fav-card',    bucket: 'favorite', label: 'Follow-up: collapsible card', hint: 'Reasons appear in a card with an ✕ to collapse (re-clicking the thumb also closes).' },
-  { id: 'fav-popover', bucket: 'favorite', label: 'Follow-up: popover', hint: 'Reasons in a popover anchored to the thumbs; dismiss via ✕ or click outside.' },
-  { id: 'fav-modal',   bucket: 'favorite', label: 'Follow-up: modal dialog', hint: 'Reasons in a modal over the digest with ✕ / Done — matches the shipped Staffbase digest.' },
 ];
 const FIRST = {
   active: { placement: 'expanded-end-content', mechanism: 'thumbs' },
@@ -720,8 +718,6 @@ const BUILDERS = {
   thumbs: buildThumbs,
   'fav-thumbs': ctx => buildFav(ctx, 'bare'),
   'fav-card': ctx => buildFav(ctx, 'card'),
-  'fav-popover': ctx => buildFav(ctx, 'popover'),
-  'fav-modal': ctx => buildFav(ctx, 'modal'),
   rating: buildRating, relevant: buildRelevant, dismiss: buildDismiss, chips: buildChips, report: buildReport,
 };
 const buildMechanism = (m, ctx) => BUILDERS[m](ctx);
