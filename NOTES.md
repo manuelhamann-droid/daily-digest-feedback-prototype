@@ -12,6 +12,11 @@ Open `index.html` and use the **variant switcher**. The panel has three tabs:
   off?”* (Not relevant to me / Missed something important / Too much / too long / Wrong
   priority order / Already knew this); thumbs-up → *“What worked?”* (Right topics for me /
   Saved me time / Good priority order / Helped me catch something I'd have missed).
+  The **Follow-up style** selector compares four ways to present + *dismiss* that follow-up:
+  **inline (bare)** (re-click thumb to collapse), **collapsible card** (✕), **popover**
+  (✕ / click-outside), and **modal dialog** (✕ / Done — matches the shipped Staffbase
+  digest, which uses a modal). Chips toggle directly; hovering an active option shows
+  “Thank you for your feedback”.
 
 ---
 

@@ -113,6 +113,8 @@
   .combo-readout b { color: var(--ink); }
   .combo-readout .warnline { color: #a36723; margin-top: 6px; display: block; }
   .cap { font-size: 11px; color: var(--ink-3); }
+  /* feedback question / follow-up title — label/sm: 14px medium, neutral-strong */
+  .fb-question { font-size: 14px; font-weight: 500; line-height: 18px; color: var(--ink); }
 
   /* ---------- Stage ---------- */
   .stage { padding: 44px 24px 90px; display: flex; flex-direction: column; align-items: center; }
@@ -124,7 +126,7 @@
   .dd-card {
     background: var(--surface); border-radius: var(--radius);
     box-shadow: var(--shadow-card); overflow: hidden; width: 440px; max-width: 100%;
-    transition: width .25s ease;
+    transition: width .25s ease; position: relative;
   }
   .dd-card.expanded { width: 920px; }
 
@@ -290,6 +292,20 @@
   .fav-tip.sel:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
   .fav-tip.sel:hover::before { opacity: 1; }
 
+  /* favourite follow-up containers (card / popover / modal) */
+  .fav-host { position: relative; }
+  .fb-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 13px; box-shadow: 0 1px 2px rgba(20,20,40,.05); }
+  .fb-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+  .fb-close { background: none; border: none; cursor: pointer; color: var(--ink-3); padding: 2px; border-radius: 4px; line-height: 0; }
+  .fb-close:hover { color: var(--ink); background: var(--neutral-base); }
+  .fb-close svg { width: 16px; height: 16px; }
+  .fb-pop { position: absolute; top: 10px; left: 0; z-index: 20; min-width: min(340px, 92%); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: 0 10px 30px rgba(20,20,40,.18); padding: 12px 13px; }
+  .fb-pop-arrow { position: absolute; top: -6px; left: 26px; width: 10px; height: 10px; background: var(--surface); border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); }
+  .fb-modal-backdrop { position: absolute; inset: 0; background: rgba(20,20,40,.28); display: flex; align-items: center; justify-content: center; z-index: 40; border-radius: var(--radius); }
+  .fb-modal { background: var(--surface); border-radius: var(--radius); box-shadow: 0 20px 50px rgba(0,0,0,.28); width: min(400px, 88%); padding: 20px; }
+  .fb-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+  .fb-modal-foot { display: flex; justify-content: flex-end; margin-top: 16px; }
+
   /* feedback inline, aligned with the source pills row */
   .dd-src-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .dd-src-row .dd-source-tags { flex: 1 1 auto; min-width: 0; }
@@ -370,7 +386,10 @@ const MECHANISMS = [
   { id: 'relevant', bucket: 'trash', label: '“Was this relevant?”', hint: 'Parked in favour of the plain thumbs treatment.' },
   { id: 'dismiss',  bucket: 'trash', label: 'Dismiss as signal', hint: 'Parked: ambiguous and implicit.' },
   { id: 'chips',    bucket: 'trash', label: 'Reason chips (no valence)', hint: 'Parked: no clean sentiment axis; adds another block.' },
-  { id: 'fav-thumbs', bucket: 'favorite', label: 'Thumbs up/down', hint: '“Was this digest relevant to you?” — reason chips only, no comment box.' },
+  { id: 'fav-thumbs',  bucket: 'favorite', label: 'Follow-up: inline (bare)', hint: 'Reasons inline, no container; re-click the active thumb to collapse.' },
+  { id: 'fav-card',    bucket: 'favorite', label: 'Follow-up: collapsible card', hint: 'Reasons appear in a card with an ✕ to collapse (re-clicking the thumb also closes).' },
+  { id: 'fav-popover', bucket: 'favorite', label: 'Follow-up: popover', hint: 'Reasons in a popover anchored to the thumbs; dismiss via ✕ or click outside.' },
+  { id: 'fav-modal',   bucket: 'favorite', label: 'Follow-up: modal dialog', hint: 'Reasons in a modal over the digest with ✕ / Done — matches the shipped Staffbase digest.' },
 ];
 const FIRST = {
   active: { placement: 'expanded-end-content', mechanism: 'thumbs' },
@@ -445,7 +464,7 @@ function buildThumbs(ctx) {
   const showLabel = !compact && ctx.showQuestion !== false;
   wrap.innerHTML = `
     <div class="${compact ? 'item-fb-compact' : 'fb-actions'}">
-      ${showLabel ? `<span class="cap" style="margin-right:2px;">${ctx.label || 'Was this digest useful?'}</span>` : ''}
+      ${showLabel ? `<span class="fb-question" style="margin-right:2px;">${ctx.label || 'Was this digest useful?'}</span>` : ''}
       <button class="icon-btn up round" title="Helpful">${I.up}</button>
       <button class="icon-btn down round" title="Not helpful">${I.down}</button>
     </div>
@@ -456,7 +475,7 @@ function buildThumbs(ctx) {
     const chips = v === 'up' ? POS_REASONS : NEG_REASONS;
     follow.style.display = 'block';
     follow.innerHTML = `
-      <div class="cap" style="margin-bottom:7px;">${v === 'up' ? 'Nice — what worked? (optional)' : "What didn't work well? (optional)"}</div>
+      <div class="fb-question" style="margin-bottom:7px;">${v === 'up' ? 'Nice — what worked? (optional)' : "What didn't work well? (optional)"}</div>
       <div class="chips">${chips.map(c => `<button class="chip">${c}</button>`).join('')}</div>
       <textarea placeholder="Add a comment (optional)"></textarea>
       <div class="fb-submit-row"><button class="btn-primary">Submit</button><button class="btn-text">Skip</button></div>`;
@@ -479,7 +498,7 @@ function buildInlineControls(mech, followEl, opts) {
   const hasThumbs = mech === 'thumbs';
   const hasReport = mech === 'report';
   let html = '';
-  if (opts.showQuestion && hasThumbs) html += `<span class="cap" style="margin-right:2px;">Was this digest useful?</span>`;
+  if (opts.showQuestion && hasThumbs) html += `<span class="fb-question" style="margin-right:2px;">Was this digest useful?</span>`;
   if (hasThumbs) html += `<button class="icon-btn ghost up round" title="Helpful">${I.up}</button><button class="icon-btn ghost down round" title="Not helpful">${I.down}</button>`;
   if (hasReport) html += `<button class="report-link" title="Report an issue">${I.flag}</button>`;
   wrap.innerHTML = html;
@@ -491,7 +510,7 @@ function buildInlineControls(mech, followEl, opts) {
     const chips = v === 'up' ? POS_REASONS : NEG_REASONS;
     followEl.style.display = 'block';
     followEl.innerHTML = `
-      <div class="cap" style="margin-bottom:7px;">${v === 'up' ? 'Nice — what worked? (optional)' : "What didn't work well? (optional)"}</div>
+      <div class="fb-question" style="margin-bottom:7px;">${v === 'up' ? 'Nice — what worked? (optional)' : "What didn't work well? (optional)"}</div>
       <div class="chips">${chips.map(c => `<button class="chip">${c}</button>`).join('')}</div>
       <textarea placeholder="Add a comment (optional)"></textarea>
       <div class="fb-submit-row"><button class="btn-primary">Submit</button><button class="btn-text">Skip</button></div>`;
@@ -505,7 +524,7 @@ function buildInlineControls(mech, followEl, opts) {
     if (!followEl) return;
     followEl.style.display = 'block';
     followEl.innerHTML = `
-      <div class="cap" style="margin-bottom:7px;">What’s wrong?</div>
+      <div class="fb-question" style="margin-bottom:7px;">What’s wrong?</div>
       <div class="chips">${['Inaccurate','Inappropriate','Broken link','Wrong audience','Outdated'].map(c => `<button class="chip">${c}</button>`).join('')}</div>
       <textarea placeholder="Describe the issue (optional)"></textarea>
       <div class="fb-submit-row"><button class="btn-primary">Submit report</button><button class="btn-text">Cancel</button></div>`;
@@ -520,7 +539,7 @@ function buildRating(ctx) {
   const wrap = el(`<div class="fb"></div>`);
   wrap.innerHTML = `
     <div class="fb-actions">
-      <span class="cap" style="margin-right:6px;">${ctx.scope === 'item' ? 'Rate this item' : (ctx.label || 'How useful was this digest?')}</span>
+      <span class="fb-question" style="margin-right:6px;">${ctx.scope === 'item' ? 'Rate this item' : (ctx.label || 'How useful was this digest?')}</span>
       <div class="stars">${[1,2,3,4,5].map(n => `<span class="star" data-n="${n}">${I.star}</span>`).join('')}</div>
     </div>
     <div class="fb-followup" style="display:none;"></div>`;
@@ -534,7 +553,7 @@ function buildRating(ctx) {
       chosen = +s.dataset.n; paint(chosen);
       follow.style.display = 'block';
       follow.innerHTML = `
-        <div class="cap" style="margin:8px 0 6px;">${chosen <= 3 ? 'What would make it better? (optional)' : 'Anything you especially liked? (optional)'}</div>
+        <div class="fb-question" style="margin:8px 0 6px;">${chosen <= 3 ? 'What would make it better? (optional)' : 'Anything you especially liked? (optional)'}</div>
         <textarea placeholder="Add a comment (optional)"></textarea>
         <div class="fb-submit-row"><button class="btn-primary">Submit</button><button class="btn-text">Skip</button></div>`;
       const d = () => wrap.innerHTML = thanks();
@@ -549,7 +568,7 @@ function buildRelevant(ctx) {
   const wrap = el(`<div class="fb"></div>`);
   wrap.innerHTML = `
     <div class="${ctx.scope === 'item' ? 'item-fb-compact' : 'fb-actions'}">
-      <span class="cap" style="margin-right:2px;">${ctx.scope === 'item' ? 'Relevant to you?' : 'Was this digest relevant to you?'}</span>
+      <span class="fb-question" style="margin-right:2px;">${ctx.scope === 'item' ? 'Relevant to you?' : 'Was this digest relevant to you?'}</span>
       <button class="icon-btn" data-v="yes">${I.check} Yes</button>
       <button class="icon-btn" data-v="no">Not for me</button>
     </div>
@@ -614,7 +633,7 @@ function buildReport(ctx) {
     follow.style.display = 'block';
     follow.innerHTML = `
       <div class="fb-block" style="margin-top:8px;">
-        <div class="cap" style="margin-bottom:7px;">What’s wrong?</div>
+        <div class="fb-question" style="margin-bottom:7px;">What’s wrong?</div>
         <div class="chips">${['Inaccurate','Inappropriate','Broken link','Wrong audience','Outdated'].map(c => `<button class="chip">${c}</button>`).join('')}</div>
         <textarea placeholder="Describe the issue (optional)" style="margin-top:9px;"></textarea>
         <div class="fb-submit-row"><button class="btn-primary">Submit report</button><button class="btn-text">Cancel</button></div>
@@ -626,37 +645,85 @@ function buildReport(ctx) {
   return wrap;
 }
 
-// Favourite: relevance-framed thumbs, reason chips only, NO free-text comment box.
-function buildFavThumbs(ctx) {
-  const wrap = el(`<div class="fb"></div>`);
+// Favourite: relevance-framed thumbs, reason chips only (no free-text). `mode` controls how the
+// follow-up is presented + dismissed: 'bare' (inline), 'card', 'popover', 'modal'.
+function buildFav(ctx, mode) {
   const showLabel = ctx.showQuestion !== false;
+  const POS = ['Right topics for me', 'Saved me time', 'Good priority order', "Helped me catch something I'd have missed"];
+  const NEG = ['Not relevant to me', 'Missed something important', 'Too much / too long', 'Wrong priority order', 'Already knew this'];
+  const wrap = el(`<div class="fb"></div>`);
   wrap.innerHTML = `
     <div class="fb-actions">
-      ${showLabel ? `<span class="cap" style="margin-right:2px;">Was this digest relevant to you?</span>` : ''}
+      ${showLabel ? `<span class="fb-question" style="margin-right:2px;">Was this digest relevant to you?</span>` : ''}
       <button class="icon-btn up round fav-tip" data-tip="Thank you for your feedback">${I.up}</button>
       <button class="icon-btn down round fav-tip" data-tip="Thank you for your feedback">${I.down}</button>
     </div>
-    <div class="fb-followup" style="display:none;"></div>`;
-  const up = wrap.querySelector('.up'), down = wrap.querySelector('.down'), follow = wrap.querySelector('.fb-followup');
-  const POS = ['Right topics for me', 'Saved me time', 'Good priority order', "Helped me catch something I'd have missed"];
-  const NEG = ['Not relevant to me', 'Missed something important', 'Too much / too long', 'Wrong priority order', 'Already knew this'];
-  function openFollow(v) {
-    up.classList.toggle('sel', v === 'up'); down.classList.toggle('sel', v === 'down');
-    const chips = v === 'up' ? POS : NEG;
-    follow.style.display = 'block';
-    // No Submit/Skip — chips toggle directly (selecting is recording).
-    // Hovering an answer choice surfaces a "Thank you for your feedback" tooltip.
-    follow.innerHTML = `
-      <div class="cap" style="margin-bottom:7px;">${v === 'up' ? 'What worked?' : 'What was off?'}</div>
-      <div class="chips">${chips.map(c => `<button class="chip fav-tip" data-tip="Thank you for your feedback">${c}</button>`).join('')}</div>`;
-    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
+    <div class="fav-host"></div>`;
+  const up = wrap.querySelector('.up'), down = wrap.querySelector('.down'), host = wrap.querySelector('.fav-host');
+  let openV = null, docHandler = null;
+
+  const titleFor = v => v === 'up' ? 'What worked?' : 'What was off?';
+  const chipsHtml = v => `<div class="chips">${(v === 'up' ? POS : NEG).map(c => `<button class="chip fav-tip" data-tip="Thank you for your feedback">${c}</button>`).join('')}</div>`;
+  const wireChips = root => root.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
+  const closeBtn = `<button class="fb-close" title="Close">${I.close}</button>`;
+  const teardownDoc = () => { if (docHandler) { document.removeEventListener('mousedown', docHandler); docHandler = null; } };
+  function collapse() { openV = null; up.classList.remove('sel'); down.classList.remove('sel'); host.innerHTML = ''; teardownDoc(); }
+
+  function render(v) {
+    if (mode === 'card') {
+      host.innerHTML = `<div class="fb-card" style="margin-top:10px;"><div class="fb-card-head"><span class="fb-question">${titleFor(v)}</span>${closeBtn}</div>${chipsHtml(v)}</div>`;
+      wireChips(host);
+      host.querySelector('.fb-close').addEventListener('click', collapse);
+    } else if (mode === 'popover') {
+      host.innerHTML = `<div class="fb-pop"><span class="fb-pop-arrow"></span><div class="fb-card-head"><span class="fb-question">${titleFor(v)}</span>${closeBtn}</div>${chipsHtml(v)}</div>`;
+      wireChips(host);
+      const pop = host.querySelector('.fb-pop');
+      host.querySelector('.fb-close').addEventListener('click', collapse);
+      teardownDoc();
+      docHandler = (e) => {
+        if (!pop.isConnected) { teardownDoc(); return; }
+        if (!pop.contains(e.target) && !wrap.querySelector('.fb-actions').contains(e.target)) collapse();
+      };
+      setTimeout(() => document.addEventListener('mousedown', docHandler), 0);
+    } else if (mode === 'modal') {
+      host.innerHTML = `
+        <div class="fb-modal-backdrop">
+          <div class="fb-modal" role="dialog" aria-modal="true">
+            <div class="fb-modal-head"><span class="fb-question" style="font-size:16px;line-height:22px;">${titleFor(v)}</span>${closeBtn}</div>
+            ${chipsHtml(v)}
+            <div class="fb-modal-foot"><button class="btn-primary fb-done">Done</button></div>
+          </div>
+        </div>`;
+      wireChips(host);
+      const backdrop = host.querySelector('.fb-modal-backdrop');
+      host.querySelector('.fb-close').addEventListener('click', collapse);
+      host.querySelector('.fb-done').addEventListener('click', collapse);
+      backdrop.addEventListener('mousedown', (e) => { if (e.target === backdrop) collapse(); });
+    } else { // bare
+      host.innerHTML = `<div style="margin-top:10px;"><div class="fb-question" style="margin-bottom:7px;">${titleFor(v)}</div>${chipsHtml(v)}</div>`;
+      wireChips(host);
+    }
   }
-  up.addEventListener('click', () => openFollow('up'));
-  down.addEventListener('click', () => openFollow('down'));
+
+  function openThumb(v) {
+    if (openV === v) { collapse(); return; }   // re-click the active thumb → collapse
+    openV = v;
+    up.classList.toggle('sel', v === 'up'); down.classList.toggle('sel', v === 'down');
+    render(v);
+  }
+  up.addEventListener('click', () => openThumb('up'));
+  down.addEventListener('click', () => openThumb('down'));
   return wrap;
 }
 
-const BUILDERS = { thumbs: buildThumbs, 'fav-thumbs': buildFavThumbs, rating: buildRating, relevant: buildRelevant, dismiss: buildDismiss, chips: buildChips, report: buildReport };
+const BUILDERS = {
+  thumbs: buildThumbs,
+  'fav-thumbs': ctx => buildFav(ctx, 'bare'),
+  'fav-card': ctx => buildFav(ctx, 'card'),
+  'fav-popover': ctx => buildFav(ctx, 'popover'),
+  'fav-modal': ctx => buildFav(ctx, 'modal'),
+  rating: buildRating, relevant: buildRelevant, dismiss: buildDismiss, chips: buildChips, report: buildReport,
+};
 const buildMechanism = (m, ctx) => BUILDERS[m](ctx);
 
 function reportAffordance(scope) {
@@ -804,7 +871,7 @@ function renderControls() {
   document.getElementById('tab-favorite').classList.toggle('active', state.tab === 'favorite');
   document.getElementById('trash-note').style.display = state.tab === 'trash' ? 'block' : 'none';
   document.getElementById('fav-note').style.display = state.tab === 'favorite' ? 'block' : 'none';
-  document.getElementById('mech-label').textContent = state.tab === 'trash' ? 'Mechanism' : 'Feedback style';
+  document.getElementById('mech-label').textContent = state.tab === 'trash' ? 'Mechanism' : state.tab === 'favorite' ? 'Follow-up style' : 'Feedback style';
 
   const ps = document.getElementById('seg-placement'); ps.innerHTML = '';
   PLACEMENTS.filter(p => p.bucket === bucket).forEach(p => {
