@@ -268,6 +268,9 @@
   .tab:hover { color: var(--ink-2); }
   .tab.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(20,20,40,.08); }
   .trash-note { font-size: 12px; color: var(--ink-2); background: #fbf3e6; border: 1px solid #f0dcc0; border-radius: var(--radius-sm); padding: 9px 11px; margin-bottom: 16px; line-height: 1.45; }
+  .fav-note { font-size: 12px; color: var(--ink-2); background: var(--sb-brand-tint); border: 1px solid #c9ddff; border-radius: var(--radius-sm); padding: 9px 11px; margin-bottom: 16px; line-height: 1.45; }
+  .tab#tab-favorite { color: #b26a00; }
+  .tab#tab-favorite.active { color: #b26a00; }
 
   /* grouped thumbs + report */
   .fb-sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
@@ -290,10 +293,14 @@
     <div class="tabs">
       <button class="tab active" id="tab-exploring">Exploring</button>
       <button class="tab" id="tab-trash">Trash</button>
+      <button class="tab" id="tab-favorite">★ Favorite</button>
     </div>
 
     <div id="trash-note" class="trash-note" style="display:none;">
       Parked based on review feedback (Giovanna, focus on the expanded view + a plainer, search-style treatment). Still selectable here to revisit.
+    </div>
+    <div id="fav-note" class="fav-note" style="display:none;">
+      The chosen direction: in-content thumbs asking “Was this digest relevant to you?”, with reason chips only (no free-text box).
     </div>
 
     <div class="ctl">
@@ -339,6 +346,7 @@ const PLACEMENTS = [
   { id: 'collapsed',    bucket: 'trash', label: 'Collapsed digest (whole)', hint: 'Parked: reflects the teaser, not the curation; team is focusing on the expanded view.' },
   { id: 'expanded-top', bucket: 'trash', label: 'Expanded digest — top',    hint: 'Parked: asks before the person has read anything.' },
   { id: 'per-item',     bucket: 'trash', label: 'Per content item',         hint: 'Parked: high friction and visual noise; too much going on already.' },
+  { id: 'fav-content',  bucket: 'favorite', label: 'Expanded — end (in content)', hint: 'The chosen placement — relevance-framed thumbs with reason chips, no free-text box.' },
 ];
 const MECHANISMS = [
   { id: 'thumbs',        bucket: 'active', label: 'Thumbs up/down', tag: 'Lead', hint: 'Plain, search-style thumbs (no box). Down-vote opens optional reason chips — the richer signal.' },
@@ -347,9 +355,14 @@ const MECHANISMS = [
   { id: 'relevant', bucket: 'trash', label: '“Was this relevant?”', hint: 'Parked in favour of the plain thumbs treatment.' },
   { id: 'dismiss',  bucket: 'trash', label: 'Dismiss as signal', hint: 'Parked: ambiguous and implicit.' },
   { id: 'chips',    bucket: 'trash', label: 'Reason chips (no valence)', hint: 'Parked: no clean sentiment axis; adds another block.' },
+  { id: 'fav-thumbs', bucket: 'favorite', label: 'Thumbs up/down', hint: '“Was this digest relevant to you?” — reason chips only, no comment box.' },
 ];
-const FIRST = { active: { placement: 'expanded-end-content', mechanism: 'thumbs' }, trash: { placement: 'collapsed', mechanism: 'rating' } };
-const bucketForTab = (tab) => (tab === 'trash' ? 'trash' : 'active');
+const FIRST = {
+  active: { placement: 'expanded-end-content', mechanism: 'thumbs' },
+  trash: { placement: 'collapsed', mechanism: 'rating' },
+  favorite: { placement: 'fav-content', mechanism: 'fav-thumbs' },
+};
+const bucketForTab = (tab) => (tab === 'trash' ? 'trash' : tab === 'favorite' ? 'favorite' : 'active');
 
 const state = { tab: 'exploring', placement: 'expanded-end-content', mechanism: 'thumbs', showQuestion: true, reveal: false, report: false };
 const isOpen = () => state.placement !== 'collapsed';
@@ -598,7 +611,38 @@ function buildReport(ctx) {
   return wrap;
 }
 
-const BUILDERS = { thumbs: buildThumbs, rating: buildRating, relevant: buildRelevant, dismiss: buildDismiss, chips: buildChips, report: buildReport };
+// Favourite: relevance-framed thumbs, reason chips only, NO free-text comment box.
+function buildFavThumbs(ctx) {
+  const wrap = el(`<div class="fb"></div>`);
+  const showLabel = ctx.showQuestion !== false;
+  wrap.innerHTML = `
+    <div class="fb-actions">
+      ${showLabel ? `<span class="cap" style="margin-right:2px;">Was this digest relevant to you?</span>` : ''}
+      <button class="icon-btn up round" title="Relevant">${I.up}</button>
+      <button class="icon-btn down round" title="Not relevant">${I.down}</button>
+    </div>
+    <div class="fb-followup" style="display:none;"></div>`;
+  const up = wrap.querySelector('.up'), down = wrap.querySelector('.down'), follow = wrap.querySelector('.fb-followup');
+  const POS = ['Right topics for me', 'Saved me time', 'Good priority order', "Helped me catch something I'd have missed"];
+  const NEG = ['Not relevant to me', 'Missed something important', 'Too much / too long', 'Wrong priority order', 'Already knew this'];
+  function openFollow(v) {
+    up.classList.toggle('sel', v === 'up'); down.classList.toggle('sel', v === 'down');
+    const chips = v === 'up' ? POS : NEG;
+    follow.style.display = 'block';
+    follow.innerHTML = `
+      <div class="cap" style="margin-bottom:7px;">${v === 'up' ? 'What worked?' : 'What was off?'}</div>
+      <div class="chips">${chips.map(c => `<button class="chip">${c}</button>`).join('')}</div>
+      <div class="fb-submit-row"><button class="btn-primary">Submit</button><button class="btn-text">Skip</button></div>`;
+    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
+    follow.querySelector('.btn-primary').addEventListener('click', () => wrap.innerHTML = thanks());
+    follow.querySelector('.btn-text').addEventListener('click', () => wrap.innerHTML = thanks());
+  }
+  up.addEventListener('click', () => openFollow('up'));
+  down.addEventListener('click', () => openFollow('down'));
+  return wrap;
+}
+
+const BUILDERS = { thumbs: buildThumbs, 'fav-thumbs': buildFavThumbs, rating: buildRating, relevant: buildRelevant, dismiss: buildDismiss, chips: buildChips, report: buildReport };
 const buildMechanism = (m, ctx) => BUILDERS[m](ctx);
 
 function reportAffordance(scope) {
@@ -687,7 +731,7 @@ function renderExpanded() {
           <div class="dd-vdivider"></div>
           ${colHtml(SECTIONS[1])}
         </div>
-        ${state.placement === 'expanded-end-content' ? `<div id="slot-exp-end-content" style="margin-top:20px;"></div>` : ''}
+        ${(state.placement === 'expanded-end-content' || state.placement === 'fav-content') ? `<div id="slot-exp-end-content" style="margin-top:20px;"></div>` : ''}
       </div>
       <hr class="dd-hr" />
       <div class="dd-sources">
@@ -714,7 +758,7 @@ function renderExpanded() {
     const slot = digestEl.querySelector('#slot-exp-end');
     slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest', showQuestion: state.showQuestion }));
   }
-  if (state.placement === 'expanded-end-content') {
+  if (state.placement === 'expanded-end-content' || state.placement === 'fav-content') {
     const slot = digestEl.querySelector('#slot-exp-end-content');
     slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest', showQuestion: state.showQuestion }));
   }
@@ -743,7 +787,9 @@ function renderControls() {
   const bucket = bucketForTab(state.tab);
   document.getElementById('tab-exploring').classList.toggle('active', state.tab === 'exploring');
   document.getElementById('tab-trash').classList.toggle('active', state.tab === 'trash');
+  document.getElementById('tab-favorite').classList.toggle('active', state.tab === 'favorite');
   document.getElementById('trash-note').style.display = state.tab === 'trash' ? 'block' : 'none';
+  document.getElementById('fav-note').style.display = state.tab === 'favorite' ? 'block' : 'none';
   document.getElementById('mech-label').textContent = state.tab === 'trash' ? 'Mechanism' : 'Feedback style';
 
   const ps = document.getElementById('seg-placement'); ps.innerHTML = '';
@@ -785,6 +831,7 @@ function renderReadout() {
 
 document.getElementById('tab-exploring').addEventListener('click', () => setTab('exploring'));
 document.getElementById('tab-trash').addEventListener('click', () => setTab('trash'));
+document.getElementById('tab-favorite').addEventListener('click', () => setTab('favorite'));
 
 function refresh() { renderControls(); render(); }
 refresh();

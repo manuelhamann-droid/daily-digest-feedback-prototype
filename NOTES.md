@@ -4,9 +4,14 @@ A design exploration of where and how to capture end-user feedback on the AI-cur
 Daily Digest. This is deliberately **open** — no recommended answer. Each option below
 carries a neutral pro/con read so a design review can weigh the tensions directly.
 
-Open `index.html` and use the **variant switcher**. The panel has two tabs:
-- **Exploring** — the direction we're pursuing after review.
+Open `index.html` and use the **variant switcher**. The panel has three tabs:
+- **Exploring** — the directions we're comparing after review.
 - **Trash** — options we've parked (kept for reference, still previewable).
+- **★ Favorite** — the current chosen version: in-content thumbs asking *“Was this digest
+  relevant to you?”*, with reason chips only (no free-text box). Thumbs-down → *“What was
+  off?”* (Not relevant to me / Missed something important / Too much / too long / Wrong
+  priority order / Already knew this); thumbs-up → *“What worked?”* (Right topics for me /
+  Saved me time / Good priority order / Helped me catch something I'd have missed).
 
 ---
 
