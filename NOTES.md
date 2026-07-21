@@ -24,14 +24,11 @@ treatment** (like the ChatGPT/Claude thumbs) — no coloured block or icon conta
   registers directly rather than opening reason chips (kept lightweight for a corner), so
   it trades reason capture for the smallest footprint.
 
-**Feedback style (exploring):**
+**Feedback style (exploring) — two standalone options, never combined:**
 - **Thumbs up/down** — plain, down-vote opens optional reason chips (the richer signal).
-- **Thumbs + Report (grouped)** — thumbs and “Report issue” in one row, so all three read
-  as feedback on the *digest* (fixes the earlier confusion where Report looked like it was
-  about the sources).
-- **Report issue only.**
-- Open question Manuel raised: **thumbs *or* report, not both** vs. Giovanna's grouped-all-
-  three — the grouped option and the two single options let us compare that directly.
+- **Report issue only** — the “something is wrong” escape hatch, no valence.
+- Direction: **thumbs *or* report, not both** (Manuel's call). The earlier grouped
+  “Thumbs + Report” option has been dropped.
 
 **Parked (Trash tab):** collapsed-whole, expanded-top, per-item; rating scale, “was this
 relevant?”, dismiss-as-signal, reason-chips-no-valence. The fuller neutral pro/con write-up

@@ -336,7 +336,6 @@ const PLACEMENTS = [
 const MECHANISMS = [
   { id: 'thumbs',        bucket: 'active', label: 'Thumbs up/down', tag: 'Lead', hint: 'Plain, search-style thumbs (no box). Down-vote opens optional reason chips — the richer signal.' },
   { id: 'report',        bucket: 'active', label: 'Report issue only', hint: 'Just the report affordance — the “something is wrong” escape hatch, no valence.' },
-  { id: 'thumbs-report', bucket: 'trash', label: 'Thumbs + Report (grouped)', hint: 'Parked: grouping thumbs + report in one row was more than needed; leaning to thumbs or report, not both.' },
   { id: 'rating',   bucket: 'trash', label: 'Rating scale (1–5)', hint: 'Parked: higher load; feels evaluative.' },
   { id: 'relevant', bucket: 'trash', label: '“Was this relevant?”', hint: 'Parked in favour of the plain thumbs treatment.' },
   { id: 'dismiss',  bucket: 'trash', label: 'Dismiss as signal', hint: 'Parked: ambiguous and implicit.' },
@@ -432,51 +431,6 @@ function buildThumbs(ctx) {
   function done() { wrap.innerHTML = `<div class="${ctx.scope === 'item' ? 'item-fb-compact' : ''}">${thanks()}</div>`; }
   up.addEventListener('click', () => openFollow('up'));
   down.addEventListener('click', () => openFollow('down'));
-  return wrap;
-}
-
-// Thumbs up/down AND Report issue grouped in one row — all read as feedback on the digest.
-function buildThumbsReport(ctx) {
-  const wrap = el(`<div class="fb"></div>`);
-  wrap.innerHTML = `
-    <div class="fb-actions">
-      <span class="cap" style="margin-right:2px;">${ctx.label || 'Was this digest useful?'}</span>
-      <button class="icon-btn up round" title="Helpful">${I.up}</button>
-      <button class="icon-btn down round" title="Not helpful">${I.down}</button>
-      <span class="fb-sep"></span>
-      <button class="report-link" title="Report an issue">${I.flag} Report issue</button>
-    </div>
-    <div class="fb-followup" style="display:none;"></div>`;
-  const up = wrap.querySelector('.up'), down = wrap.querySelector('.down'), rep = wrap.querySelector('.report-link'), follow = wrap.querySelector('.fb-followup');
-  const done = msg => { wrap.innerHTML = `<span class="fb-thanks">${I.check} ${msg}</span>`; };
-  function openThumb(v) {
-    up.classList.toggle('sel', v === 'up'); down.classList.toggle('sel', v === 'down');
-    const chips = v === 'up' ? POS_REASONS : NEG_REASONS;
-    follow.style.display = 'block';
-    follow.innerHTML = `
-      <div class="cap" style="margin-bottom:7px;">${v === 'up' ? 'Nice — what worked? (optional)' : "What didn't work well? (optional)"}</div>
-      <div class="chips">${chips.map(c => `<button class="chip">${c}</button>`).join('')}</div>
-      <textarea placeholder="Add a comment (optional)"></textarea>
-      <div class="fb-submit-row"><button class="btn-primary">Submit</button><button class="btn-text">Skip</button></div>`;
-    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
-    follow.querySelector('.btn-primary').addEventListener('click', () => done('Thanks — this helps tune your digest.'));
-    follow.querySelector('.btn-text').addEventListener('click', () => done('Thanks — this helps tune your digest.'));
-  }
-  function openReport() {
-    up.classList.remove('sel'); down.classList.remove('sel');
-    follow.style.display = 'block';
-    follow.innerHTML = `
-      <div class="cap" style="margin-bottom:7px;">What’s wrong?</div>
-      <div class="chips">${['Inaccurate','Inappropriate','Broken link','Wrong audience','Outdated'].map(c => `<button class="chip">${c}</button>`).join('')}</div>
-      <textarea placeholder="Describe the issue (optional)"></textarea>
-      <div class="fb-submit-row"><button class="btn-primary">Submit report</button><button class="btn-text">Cancel</button></div>`;
-    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
-    follow.querySelector('.btn-primary').addEventListener('click', () => done('Report sent to your admin. Thank you.'));
-    follow.querySelector('.btn-text').addEventListener('click', () => { follow.style.display = 'none'; follow.innerHTML = ''; });
-  }
-  up.addEventListener('click', () => openThumb('up'));
-  down.addEventListener('click', () => openThumb('down'));
-  rep.addEventListener('click', openReport);
   return wrap;
 }
 
@@ -620,7 +574,7 @@ function buildReport(ctx) {
   return wrap;
 }
 
-const BUILDERS = { thumbs: buildThumbs, 'thumbs-report': buildThumbsReport, rating: buildRating, relevant: buildRelevant, dismiss: buildDismiss, chips: buildChips, report: buildReport };
+const BUILDERS = { thumbs: buildThumbs, rating: buildRating, relevant: buildRelevant, dismiss: buildDismiss, chips: buildChips, report: buildReport };
 const buildMechanism = (m, ctx) => BUILDERS[m](ctx);
 
 function reportAffordance(scope) {
