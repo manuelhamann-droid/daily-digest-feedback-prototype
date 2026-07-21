@@ -272,8 +272,9 @@
   /* grouped thumbs + report */
   .fb-sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
 
-  /* feedback inline beside the Sources title */
-  .dd-src-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  /* feedback inline, aligned with the source pills row */
+  .dd-src-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .dd-src-row .dd-source-tags { flex: 1 1 auto; min-width: 0; }
   .fb-inline-ctrl { flex: none; }
   .icon-btn.ghost { border-color: transparent; background: transparent; }
   .icon-btn.ghost:hover { background: var(--neutral-base); border-color: transparent; }
@@ -713,12 +714,12 @@ function renderExpanded() {
       <hr class="dd-hr" />
       <div class="dd-sources">
         ${state.placement === 'expanded-end' ? `<div id="slot-exp-end" style="margin-bottom:16px;"></div>` : ''}
-        <div class="dd-src-head">
-          <p class="lbl">Sources</p>
+        <p class="lbl">Sources</p>
+        <div class="dd-src-row">
+          <div class="dd-source-tags">
+            ${SOURCES.map((s,i) => `<span class="dd-src"><span class="n">${i+1}</span><span class="dot">•</span><span class="t">${s}</span></span>`).join('')}
+          </div>
           ${state.placement === 'expanded-end-inline' ? `<div id="slot-inline-ctrl" class="fb-inline-ctrl"></div>` : ''}
-        </div>
-        <div class="dd-source-tags">
-          ${SOURCES.map((s,i) => `<span class="dd-src"><span class="n">${i+1}</span><span class="dot">•</span><span class="t">${s}</span></span>`).join('')}
         </div>
         ${state.placement === 'expanded-end-inline' ? `<div id="slot-inline-follow" style="margin-top:12px; display:none;"></div>` : ''}
       </div>
