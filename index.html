@@ -275,6 +275,21 @@
   /* grouped thumbs + report */
   .fb-sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
 
+  /* answer-choice hover tooltip (favourite) */
+  .fav-chip { position: relative; }
+  .fav-chip::after {
+    content: attr(data-tip); position: absolute; bottom: calc(100% + 7px); left: 50%;
+    transform: translateX(-50%) translateY(3px); background: var(--ink); color: #fff;
+    font-size: 11px; font-weight: 500; white-space: nowrap; padding: 4px 8px; border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(20,20,40,.18); opacity: 0; pointer-events: none; transition: opacity .12s ease, transform .12s ease; z-index: 5;
+  }
+  .fav-chip::before {
+    content: ''; position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: var(--ink); opacity: 0; transition: opacity .12s ease; z-index: 5;
+  }
+  .fav-chip:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .fav-chip:hover::before { opacity: 1; }
+
   /* feedback inline, aligned with the source pills row */
   .dd-src-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .dd-src-row .dd-source-tags { flex: 1 1 auto; min-width: 0; }
@@ -627,20 +642,14 @@ function buildFavThumbs(ctx) {
   const NEG = ['Not relevant to me', 'Missed something important', 'Too much / too long', 'Wrong priority order', 'Already knew this'];
   function openFollow(v) {
     up.classList.toggle('sel', v === 'up'); down.classList.toggle('sel', v === 'down');
-    // once a vote is cast, hovering the thumbs confirms the feedback was captured
-    up.title = down.title = 'Thank you for your feedback';
     const chips = v === 'up' ? POS : NEG;
     follow.style.display = 'block';
-    // No Submit/Skip — chips toggle directly (selecting is recording); an ack appears once something is chosen.
+    // No Submit/Skip — chips toggle directly (selecting is recording).
+    // Hovering an answer choice surfaces a "Thank you for your feedback" tooltip.
     follow.innerHTML = `
       <div class="cap" style="margin-bottom:7px;">${v === 'up' ? 'What worked?' : 'What was off?'}</div>
-      <div class="chips">${chips.map(c => `<button class="chip">${c}</button>`).join('')}</div>
-      <div class="fb-thanks fav-ack" style="display:none; margin-top:10px;">${I.check} Thank you for your feedback</div>`;
-    const ack = follow.querySelector('.fav-ack');
-    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => {
-      ch.classList.toggle('sel');
-      ack.style.display = follow.querySelector('.chip.sel') ? 'flex' : 'none';
-    }));
+      <div class="chips">${chips.map(c => `<button class="chip fav-chip" data-tip="Thank you for your feedback">${c}</button>`).join('')}</div>`;
+    follow.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
   }
   up.addEventListener('click', () => openFollow('up'));
   down.addEventListener('click', () => openFollow('down'));
