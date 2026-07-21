@@ -308,6 +308,13 @@
       <div class="hint" id="mechanism-hint"></div>
     </div>
 
+    <div class="ctl" id="ctl-question" style="display:none;">
+      <div class="switch-row">
+        <span class="txt">Show question label<br><span class="cap">“Was this digest useful?” before the thumbs</span></span>
+        <div class="toggle on" id="tg-question"></div>
+      </div>
+    </div>
+
     <div class="divider"></div>
     <div class="combo-readout" id="readout"></div>
   </aside>
@@ -344,7 +351,7 @@ const MECHANISMS = [
 const FIRST = { active: { placement: 'expanded-end-content', mechanism: 'thumbs' }, trash: { placement: 'collapsed', mechanism: 'rating' } };
 const bucketForTab = (tab) => (tab === 'trash' ? 'trash' : 'active');
 
-const state = { tab: 'exploring', placement: 'expanded-end-content', mechanism: 'thumbs', reveal: false, report: false };
+const state = { tab: 'exploring', placement: 'expanded-end-content', mechanism: 'thumbs', showQuestion: true, reveal: false, report: false };
 const isOpen = () => state.placement !== 'collapsed';
 
 /* ============================================================ Icons ============================================================ */
@@ -407,9 +414,10 @@ const POS_REASONS = ['Spot on', 'Good timing', 'More like this'];
 function buildThumbs(ctx) {
   const wrap = el(`<div class="fb"></div>`);
   const compact = ctx.scope === 'item';
+  const showLabel = !compact && ctx.showQuestion !== false;
   wrap.innerHTML = `
     <div class="${compact ? 'item-fb-compact' : 'fb-actions'}">
-      ${compact ? '' : `<span class="cap" style="margin-right:2px;">${ctx.label || 'Was this digest useful?'}</span>`}
+      ${showLabel ? `<span class="cap" style="margin-right:2px;">${ctx.label || 'Was this digest useful?'}</span>` : ''}
       <button class="icon-btn up round" title="Helpful">${I.up}</button>
       <button class="icon-btn down round" title="Not helpful">${I.down}</button>
     </div>
@@ -434,21 +442,37 @@ function buildThumbs(ctx) {
   return wrap;
 }
 
-// Compact icons-only controls for the "beside Sources" placement (no label).
-// Thumbs register directly (minimal corner treatment); Report opens a form in `followEl` below the sources.
-function buildInlineControls(mech, followEl) {
+// Compact controls for the "beside Sources" placement (icons in the pills row).
+// Optional question label; thumb clicks open the same reason-chip follow-up (rendered in
+// `followEl`, full-width below the source pills); Report opens its form there too.
+function buildInlineControls(mech, followEl, opts) {
+  opts = opts || {};
   const wrap = el(`<div class="fb item-fb-compact"></div>`);
-  const hasThumbs = mech === 'thumbs' || mech === 'thumbs-report';
-  const hasReport = mech === 'report' || mech === 'thumbs-report';
+  const hasThumbs = mech === 'thumbs';
+  const hasReport = mech === 'report';
   let html = '';
+  if (opts.showQuestion && hasThumbs) html += `<span class="cap" style="margin-right:2px;">Was this digest useful?</span>`;
   if (hasThumbs) html += `<button class="icon-btn ghost up round" title="Helpful">${I.up}</button><button class="icon-btn ghost down round" title="Not helpful">${I.down}</button>`;
-  if (hasThumbs && hasReport) html += `<span class="fb-sep"></span>`;
   if (hasReport) html += `<button class="report-link" title="Report an issue">${I.flag}</button>`;
   wrap.innerHTML = html;
   const up = wrap.querySelector('.up'), down = wrap.querySelector('.down'), rep = wrap.querySelector('.report-link');
-  const shortThanks = () => { wrap.innerHTML = `<span class="fb-thanks">${I.check} Thanks</span>`; if (followEl) { followEl.style.display = 'none'; followEl.innerHTML = ''; } };
-  up && up.addEventListener('click', () => { up.classList.add('sel'); down && down.classList.remove('sel'); shortThanks(); });
-  down && down.addEventListener('click', () => { down.classList.add('sel'); up && up.classList.remove('sel'); shortThanks(); });
+  const done = msg => { wrap.innerHTML = `<span class="fb-thanks">${I.check} ${msg || 'Thanks'}</span>`; if (followEl) { followEl.style.display = 'none'; followEl.innerHTML = ''; } };
+  function openFollow(v) {
+    up && up.classList.toggle('sel', v === 'up'); down && down.classList.toggle('sel', v === 'down');
+    if (!followEl) { done('Thanks'); return; }
+    const chips = v === 'up' ? POS_REASONS : NEG_REASONS;
+    followEl.style.display = 'block';
+    followEl.innerHTML = `
+      <div class="cap" style="margin-bottom:7px;">${v === 'up' ? 'Nice — what worked? (optional)' : "What didn't work well? (optional)"}</div>
+      <div class="chips">${chips.map(c => `<button class="chip">${c}</button>`).join('')}</div>
+      <textarea placeholder="Add a comment (optional)"></textarea>
+      <div class="fb-submit-row"><button class="btn-primary">Submit</button><button class="btn-text">Skip</button></div>`;
+    followEl.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
+    followEl.querySelector('.btn-primary').addEventListener('click', () => done('Thanks — this helps tune your digest.'));
+    followEl.querySelector('.btn-text').addEventListener('click', () => done('Thanks — this helps tune your digest.'));
+  }
+  up && up.addEventListener('click', () => openFollow('up'));
+  down && down.addEventListener('click', () => openFollow('down'));
   rep && rep.addEventListener('click', () => {
     if (!followEl) return;
     followEl.style.display = 'block';
@@ -458,7 +482,7 @@ function buildInlineControls(mech, followEl) {
       <textarea placeholder="Describe the issue (optional)"></textarea>
       <div class="fb-submit-row"><button class="btn-primary">Submit report</button><button class="btn-text">Cancel</button></div>`;
     followEl.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => ch.classList.toggle('sel')));
-    followEl.querySelector('.btn-primary').addEventListener('click', () => { wrap.innerHTML = `<span class="fb-thanks">${I.check} Reported</span>`; followEl.style.display = 'none'; followEl.innerHTML = ''; });
+    followEl.querySelector('.btn-primary').addEventListener('click', () => done('Reported'));
     followEl.querySelector('.btn-text').addEventListener('click', () => { followEl.style.display = 'none'; followEl.innerHTML = ''; });
   });
   return wrap;
@@ -688,16 +712,16 @@ function renderExpanded() {
   }
   if (state.placement === 'expanded-end') {
     const slot = digestEl.querySelector('#slot-exp-end');
-    slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest' }));
+    slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest', showQuestion: state.showQuestion }));
   }
   if (state.placement === 'expanded-end-content') {
     const slot = digestEl.querySelector('#slot-exp-end-content');
-    slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest' }));
+    slot.appendChild(buildMechanism(state.mechanism, { scope: 'digest', showQuestion: state.showQuestion }));
   }
   if (state.placement === 'expanded-end-inline') {
     const ctrl = digestEl.querySelector('#slot-inline-ctrl');
     const follow = digestEl.querySelector('#slot-inline-follow');
-    ctrl.appendChild(buildInlineControls(state.mechanism, follow));
+    ctrl.appendChild(buildInlineControls(state.mechanism, follow, { showQuestion: state.showQuestion }));
   }
   if (state.placement === 'per-item') {
     digestEl.querySelectorAll('.fb-inline-slot').forEach(slot => slot.appendChild(buildMechanism(state.mechanism, { scope: 'item' })));
@@ -737,6 +761,14 @@ function renderControls() {
     ms.appendChild(b);
   });
   document.getElementById('mechanism-hint').textContent = (MECHANISMS.find(m => m.id === state.mechanism) || {}).hint || '';
+
+  // "Show question label" toggle — only relevant for the thumbs styles in Exploring
+  const ctlQ = document.getElementById('ctl-question');
+  const showQToggle = state.tab === 'exploring' && state.mechanism === 'thumbs';
+  ctlQ.style.display = showQToggle ? 'block' : 'none';
+  const tgQ = document.getElementById('tg-question');
+  tgQ.classList.toggle('on', state.showQuestion);
+  tgQ.onclick = () => { state.showQuestion = !state.showQuestion; refresh(); };
 
   renderReadout();
 }

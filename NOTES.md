@@ -19,10 +19,13 @@ treatment** (like the ChatGPT/Claude thumbs) — no coloured block or icon conta
 - **Expanded — end (in content)** — at the end of the content, above the Sources divider.
 - **Expanded — end (footer)** — repositioned to sit *right under the divider, above the
   “Sources” title* (order: divider → feedback → Sources), not floating by the source chips.
-- **Expanded — beside Sources** — thumbs **icons only** (no label, borderless), right-
-  aligned in line with the “Sources” title. The most minimal treatment; here the down-vote
-  registers directly rather than opening reason chips (kept lightweight for a corner), so
-  it trades reason capture for the smallest footprint.
+- **Expanded — beside Sources** — thumbs (borderless icons) right-aligned in line with the
+  *source pills* row. Down-vote opens the same reason-chip follow-up as the other placements
+  (rendered full-width below the pills), so it keeps the richer signal at a minimal footprint.
+
+A **“Show question label” toggle** controls whether “Was this digest useful?” appears before
+the thumbs — applies to all three thumbs placements, so we can compare labelled vs. bare
+(search/ChatGPT-style) treatments.
 
 **Feedback style (exploring) — two standalone options, never combined:**
 - **Thumbs up/down** — plain, down-vote opens optional reason chips (the richer signal).
