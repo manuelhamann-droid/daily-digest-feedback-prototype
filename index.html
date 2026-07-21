@@ -294,8 +294,12 @@
 
   /* favourite follow-up containers (card / popover / modal) */
   .fav-host { position: relative; }
-  .fb-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 13px; box-shadow: 0 1px 2px rgba(20,20,40,.05); }
+  .fb-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 13px; box-shadow: 0 1px 2px rgba(20,20,40,.05); }
+  .fb-card > .fb-close { position: absolute; top: 9px; right: 9px; }
   .fb-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+  /* prompt + answer chips on one line */
+  .fb-inline-row { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+  .fb-inline-row .chips { margin-top: 0; }
   .fb-close { background: none; border: none; cursor: pointer; color: var(--ink-3); padding: 2px; border-radius: 4px; line-height: 0; }
   .fb-close:hover { color: var(--ink); background: var(--neutral-base); }
   .fb-close svg { width: 16px; height: 16px; }
@@ -669,7 +673,7 @@ function buildFav(ctx, mode) {
 
   function render(v) {
     if (mode === 'card') {
-      host.innerHTML = `<div class="fb-card" style="margin-top:10px;"><div class="fb-card-head"><span class="fb-question">${titleFor(v)}</span>${closeBtn}</div>${chipsHtml(v)}</div>`;
+      host.innerHTML = `<div class="fb-card" style="margin-top:10px;">${closeBtn}<div class="fb-inline-row" style="padding-right:22px;"><span class="fb-question">${titleFor(v)}</span>${chipsHtml(v)}</div></div>`;
       wireChips(host);
       host.querySelector('.fb-close').addEventListener('click', collapse);
     } else if (mode === 'popover') {
@@ -698,7 +702,7 @@ function buildFav(ctx, mode) {
       host.querySelector('.fb-done').addEventListener('click', collapse);
       backdrop.addEventListener('mousedown', (e) => { if (e.target === backdrop) collapse(); });
     } else { // bare
-      host.innerHTML = `<div style="margin-top:10px;"><div class="fb-question" style="margin-bottom:7px;">${titleFor(v)}</div>${chipsHtml(v)}</div>`;
+      host.innerHTML = `<div class="fb-inline-row" style="margin-top:10px;"><span class="fb-question">${titleFor(v)}</span>${chipsHtml(v)}</div>`;
       wireChips(host);
     }
   }
