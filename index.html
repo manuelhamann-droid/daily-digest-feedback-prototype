@@ -647,8 +647,8 @@ function buildReport(ctx) {
 // follow-up is presented + dismissed: 'bare' (inline), 'card', 'popover', 'modal'.
 function buildFav(ctx, mode) {
   const showLabel = ctx.showQuestion !== false;
-  const POS = ['Right topics for me', 'Saved me time', 'Good priority order', "Helped me catch something I'd have missed"];
-  const NEG = ['Not relevant to me', 'Missed something important', 'Too much / too long', 'Wrong priority order', 'Already knew this'];
+  const POS = ['Right topics for me', 'Saved me time', 'Good priority order', "Helped me catch something I'd have missed", 'Other'];
+  const NEG = ['Not relevant to me', 'Missed something important', 'Too much / too long', 'Wrong priority order', 'Already knew this', 'Other'];
   const wrap = el(`<div class="fb"></div>`);
   wrap.innerHTML = `
     <div class="fb-actions">
